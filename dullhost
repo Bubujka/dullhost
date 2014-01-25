@@ -13,6 +13,7 @@ case "$1" in
   init) 
     $SELF install
 
+    service nginx start
     rm -rf /etc/nginx/sites-enabled
     ln -s /home/nginx /etc/nginx/sites-enabled
 
