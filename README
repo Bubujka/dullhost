@@ -1,0 +1,9 @@
+# На сервере:
+
+cd /usr/local/bin/
+wget https://raw.github.com/Bubujka/dullhost/master/dullhost
+chmod +x dullhost
+dullhost init
+
+# Со своего компьютера
+cat .ssh/id_rsa.pub | ssh root@photobo.ru 'dullhost upload-key bubujka'
