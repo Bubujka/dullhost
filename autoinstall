@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+cd /usr/local/bin/
+wget https://raw.github.com/Bubujka/dullhost/master/dullhost
+chmod +x dullhost
+dullhost init
