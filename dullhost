@@ -8,7 +8,6 @@ GITHOME="/home/$GITUSER"
 SELF=`which $0`
 
 case "$1" in
-
   # Public commands
   init) 
     $SELF install
@@ -22,11 +21,11 @@ case "$1" in
     mkdir -p $GITHOME/.ssh
     mkdir /home/www /home/nginx
     chown www-data:www-data /home/www /home/nginx
+    chmod g+w /home/nginx
 
     touch $GITHOME/.ssh/authorized_keys
     cat > /etc/sudoers.d/dullhost <<EOF
-$GITUSER     ALL=(ALL) NOPASSWD: /usr/sbin/service nginx reload
-$GITUSER     ALL=(www-data) NOPASSWD: ALL
+$GITUSER     ALL=(ALL) NOPASSWD: ALL
 EOF
     chmod 440 /etc/sudoers.d/dullhost
     
@@ -38,12 +37,34 @@ USERNAME="\$3"
 FINGERPRINT="\$4"
 
 if [ ! -d "/home/www/\$REPOSITORY" ]; then
-  sudo -u www-data $SELF init-site \$REPOSITORY
+  sudo $SELF init-site \$REPOSITORY
 fi
-sudo -u www-data $SELF update-site \$REPOSITORY
+sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
 
 sudo service nginx reload
 EOF
+
+cat > /etc/nginx/php_fastcgi <<EOF
+location ~ \.php$ {
+  fastcgi_pass   \$php_pool;
+  fastcgi_index  index.php;
+  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
+  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
+  include        fastcgi_params;
+}
+EOF
+
+cat > /etc/nginx/php_fastcgi_internal <<EOF
+location ~ \.php$ {
+  internal;
+  fastcgi_pass   \$php_pool;
+  fastcgi_index  index.php;
+  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
+  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
+  include        fastcgi_params;
+}
+EOF
+
     chmod +x $GITHOME/receiver
     chown -R $GITUSER $GITHOME
     echo "Created receiver script in $GITHOME for user '$GITUSER'."
@@ -72,13 +93,15 @@ EOF
     if [ -f /home/www/$REPOSITORY/CNAME ]; then
       DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
       cat << EOF > /home/nginx/$REPOSITORY
-      server {
-        listen *:80;
-        server_name $DOMAINS;
-        root /home/www/$REPOSITORY;
-        location /.git { deny   all; }
-        $NGINX_CONF
-      }
+server {
+  listen *:80;
+  server_name $DOMAINS;
+  set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
+
+  root /home/www/$REPOSITORY;
+  location /.git { deny   all; }
+  $NGINX_CONF
+}
 EOF
     else
       echo > /home/nginx/$REPOSITORY
@@ -86,8 +109,36 @@ EOF
     ;;
   init-site)
     REPOSITORY=$2
+
+    useradd -M $REPOSITORY
+    usermod -L $REPOSITORY
+    usermod -a -G www-data $REPOSITORY
+
+    cat << EOF > /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+[$REPOSITORY]
+user = \$pool
+group = \$pool
+listen = /var/run/php5-fpm-\$pool.sock
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+pm.max_requests = 500
+;pm.status_path = /status
+;ping.path = /ping
+;access.log = log/\$pool.access.log
+;slowlog = log/\$pool.log.slow
+;request_slowlog_timeout = 0
+request_terminate_timeout = 10
+;chroot = 
+chdir = /
+catch_workers_output = yes
+EOF
+    service php5-fpm reload
     cd /home/www
     git clone ~git/$REPOSITORY $REPOSITORY
+    chown -R $REPOSITORY:$REPOSITORY $REPOSITORY
     ;;
 
 
