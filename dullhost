@@ -24,8 +24,8 @@ pm.max_requests = 500
 ;pm.status_path = /status
 ;ping.path = /ping
 ;access.log = log/\$pool.access.log
-;slowlog = log/\$pool.log.slow
-;request_slowlog_timeout = 0
+slowlog = /home/\$pool/log/php-slow.log
+request_slowlog_timeout = 5
 request_terminate_timeout = 10
 ;chroot = 
 chdir = /
@@ -75,6 +75,11 @@ case "$1" in
 
     cat > /etc/nginx/conf.d/dullhost.conf <<EOF
 server_names_hash_bucket_size 256;
+log_format php  '$status $upstream_response_time $http_host "$request" '
+                '$bytes_sent '
+                '"$http_referer" - $remote_addr - $remote_user - "$http_user_agent" '
+                '$request_time [$time_local]';
+access_log off;
 EOF
 
     service nginx start
@@ -123,6 +128,7 @@ EOF
 
 cat > /etc/nginx/php_fastcgi <<EOF
 location ~ \.php$ {
+  access_log  /var/log/nginx/access.log php;
   fastcgi_pass   \$php_pool;
   fastcgi_index  index.php;
   fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
@@ -134,6 +140,7 @@ EOF
 cat > /etc/nginx/php_fastcgi_internal <<EOF
 location ~ \.php$ {
   internal;
+  access_log  /var/log/nginx/access.log php;
   fastcgi_pass   \$php_pool;
   fastcgi_index  index.php;
   fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
@@ -170,6 +177,10 @@ EOF
     REPOSITORY=$2
 
     adduser --gecos "" --disabled-password $REPOSITORY
+
+    mkdir /home/$REPOSITORY/log
+    chown -R $REPOSITORY:$REPOSITORY /home/$REPOSITORY/log
+
     usermod -a -G www-data $REPOSITORY
 
     cd /home/www
