@@ -30,6 +30,7 @@ request_terminate_timeout = 10
 ;chroot = 
 chdir = /
 catch_workers_output = yes
+php_value[session.save_path]=/home/\$pool/sessions
 EOF
   
   if [ -f /home/git/env-files/$REPOSITORY ]; then
@@ -183,7 +184,8 @@ EOF
     adduser --gecos "" --disabled-password $REPOSITORY
 
     mkdir /home/$REPOSITORY/log
-    chown -R $REPOSITORY:$REPOSITORY /home/$REPOSITORY/log
+    mkdir /home/$REPOSITORY/sessions
+    chown -R $REPOSITORY:$REPOSITORY /home/$REPOSITORY/log /home/$REPOSITORY/sessions
 
     usermod -a -G www-data $REPOSITORY
 
