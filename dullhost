@@ -112,7 +112,8 @@ if [ "\$REPOSITORY" == "env" ]; then
     cd /home/git/env-files
     git pull
   fi
-
+  chmod 700 /home/git/env
+  chmod 700 /home/git/env-files
   cd /home/git/env-files
   for file in *; do
     sudo $SELF update-configs \$file
