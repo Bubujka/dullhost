@@ -7,26 +7,90 @@ GITUSER=${GITUSER:-git}
 GITHOME="/home/$GITUSER"
 SELF=`which $0`
 
+
+function __generate_php_pool_conf {
+  REPOSITORY="$1"
+  cat << EOF > /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+[$REPOSITORY]
+user = \$pool
+group = \$pool
+listen = /var/run/php5-fpm-\$pool.sock
+pm = dynamic
+pm.max_children = 5
+pm.start_servers = 2
+pm.min_spare_servers = 1
+pm.max_spare_servers = 3
+pm.max_requests = 500
+;pm.status_path = /status
+;ping.path = /ping
+;access.log = log/\$pool.access.log
+;slowlog = log/\$pool.log.slow
+;request_slowlog_timeout = 0
+request_terminate_timeout = 10
+;chroot = 
+chdir = /
+catch_workers_output = yes
+EOF
+  
+  if [ -f /home/git/env-files/$REPOSITORY ]; then
+    echo >> /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+    cat /home/git/env-files/$REPOSITORY >> /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+  fi
+  chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+
+}
+
+function __generate_nginx_conf {
+  REPOSITORY="$1"
+  NGINX_CONF="location / { return 444; }"
+  if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
+    NGINX_CONF="include /home/www/$REPOSITORY/nginx.conf;"
+  fi
+
+  if [ -f /home/www/$REPOSITORY/CNAME ]; then
+    DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
+    cat << EOF > /etc/nginx/sites-enabled/$REPOSITORY
+server {
+  listen *:80;
+  server_name $DOMAINS;
+  set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
+  root /home/www/$REPOSITORY;
+  location /.git { deny   all; }
+  $NGINX_CONF
+}
+EOF
+  else
+    echo > /etc/nginx/sites-enabled/$REPOSITORY
+  fi
+}
+
+
+
+
 case "$1" in
   # Public commands
   init) 
-    $SELF install
-    sed -i 's/# server_names_hash_bucket_size/server_names_hash_bucket_size/g' /etc/nginx/nginx.conf
-    rm -rf /etc/nginx/sites-enabled
-    ln -s /home/nginx /etc/nginx/sites-enabled
+    apt-get update
+    apt-get install -y nginx git vim php5-fpm
+
+    cat > /etc/nginx/conf.d/dullhost.conf <<EOF
+server_names_hash_bucket_size 256;
+EOF
 
     service nginx start
 
     useradd -d $GITHOME $GITUSER || true
     mkdir -p $GITHOME/.ssh
-    mkdir /home/www /home/nginx
-    chown www-data:www-data /home/www /home/nginx
-    chmod g+w /home/nginx
+    mkdir /home/www 
+
+    chown www-data:www-data /home/www
 
     touch $GITHOME/.ssh/authorized_keys
+
     cat > /etc/sudoers.d/dullhost <<EOF
 $GITUSER     ALL=(ALL) NOPASSWD: ALL
 EOF
+
     chmod 440 /etc/sudoers.d/dullhost
     
     cat > $GITHOME/receiver <<EOF
@@ -36,12 +100,25 @@ REVISION="\$2"
 USERNAME="\$3"
 FINGERPRINT="\$4"
 
-if [ ! -d "/home/www/\$REPOSITORY" ]; then
-  sudo $SELF init-site \$REPOSITORY
-fi
-sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
+if [ "\$REPOSITORY" == "env" ]; then
+  if [ ! -d "/home/git/env-files" ]; then
+    git clone /home/git/env /home/git/env-files
+  else
+    cd /home/git/env-files
+    git pull
+  fi
 
-sudo service nginx reload
+  cd /home/git/env-files
+  for file in *; do
+    sudo $SELF update-configs \$file
+  done
+else
+  if [ ! -d "/home/www/\$REPOSITORY" ]; then
+    sudo $SELF init-site \$REPOSITORY
+  fi
+  sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
+  sudo $SELF update-configs \$REPOSITORY
+fi
 EOF
 
 cat > /etc/nginx/php_fastcgi <<EOF
@@ -70,11 +147,6 @@ EOF
     echo "Created receiver script in $GITHOME for user '$GITUSER'."
     ;;
 
-  install)
-    apt-get update
-    apt-get install -y nginx git vim php5-fpm
-    ;;
-
   update-site)
     REPOSITORY="$2"
 
@@ -85,57 +157,21 @@ EOF
       ./install
     fi
 
-    NGINX_CONF="location / { return 444; }"
-    if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
-      NGINX_CONF="include /home/www/$REPOSITORY/nginx.conf;"
-    fi
+    ;;
+  update-configs)
+    REPOSITORY=$2
+    __generate_php_pool_conf $REPOSITORY
+    __generate_nginx_conf $REPOSITORY
 
-    if [ -f /home/www/$REPOSITORY/CNAME ]; then
-      DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
-      cat << EOF > /home/nginx/$REPOSITORY
-server {
-  listen *:80;
-  server_name $DOMAINS;
-  set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
-
-  root /home/www/$REPOSITORY;
-  location /.git { deny   all; }
-  $NGINX_CONF
-}
-EOF
-    else
-      echo > /home/nginx/$REPOSITORY
-    fi
+    service php5-fpm reload
+    service nginx reload
     ;;
   init-site)
     REPOSITORY=$2
 
-    useradd -M $REPOSITORY
-    usermod -L $REPOSITORY
+    adduser --gecos "" --disabled-password $REPOSITORY
     usermod -a -G www-data $REPOSITORY
 
-    cat << EOF > /etc/php5/fpm/pool.d/${REPOSITORY}.conf
-[$REPOSITORY]
-user = \$pool
-group = \$pool
-listen = /var/run/php5-fpm-\$pool.sock
-pm = dynamic
-pm.max_children = 5
-pm.start_servers = 2
-pm.min_spare_servers = 1
-pm.max_spare_servers = 3
-pm.max_requests = 500
-;pm.status_path = /status
-;ping.path = /ping
-;access.log = log/\$pool.access.log
-;slowlog = log/\$pool.log.slow
-;request_slowlog_timeout = 0
-request_terminate_timeout = 10
-;chroot = 
-chdir = /
-catch_workers_output = yes
-EOF
-    service php5-fpm reload
     cd /home/www
     git clone ~git/$REPOSITORY $REPOSITORY
     chown -R $REPOSITORY:$REPOSITORY $REPOSITORY
