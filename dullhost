@@ -71,7 +71,10 @@ case "$1" in
   # Public commands
   init) 
     apt-get update
-    apt-get install -y nginx git vim php5-fpm
+    apt-get install -y nginx git php5-fpm php5-mysql php5-cli
+
+    curl -sS https://getcomposer.org/installer | php
+    mv composer.phar /usr/local/bin/composer
 
     cat > /etc/nginx/conf.d/dullhost.conf <<EOF
 server_names_hash_bucket_size 256;
