@@ -168,6 +168,9 @@ EOF
     if [ -f /home/www/$REPOSITORY/install ]; then
       ./install
     fi
+    if [ -f /home/www/$REPOSITORY/crontab ]; then
+      crontab /home/www/$REPOSITORY/crontab  
+    fi
 
     ;;
   update-configs)
