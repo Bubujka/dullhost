@@ -159,6 +159,9 @@ EOF
     echo "Created receiver script in $GITHOME for user '$GITUSER'."
     ;;
 
+  self-update)
+    wget -O - https://raw.github.com/Bubujka/dullhost/master/dullhost > /usr/local/bin/dullhost
+    ;;
   update-site)
     REPOSITORY="$2"
 
