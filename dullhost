@@ -50,12 +50,17 @@ function __generate_nginx_conf {
 
   if [ -f /home/www/$REPOSITORY/CNAME ]; then
     DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
+    ROOT_DIR="/home/www/$REPOSITORY"
+    if [ -d /home/www/$REPOSITORY/www ]; then
+      ROOT_DIR="/home/www/$REPOSITORY/www"
+    fi
+
     cat << EOF > /etc/nginx/sites-enabled/$REPOSITORY
 server {
   listen *:80;
   server_name $DOMAINS;
   set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
-  root /home/www/$REPOSITORY;
+  root $ROOT_DIR;
   location /.git { deny   all; }
   $NGINX_CONF
 }
