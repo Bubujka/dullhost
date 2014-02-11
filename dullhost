@@ -55,10 +55,17 @@ function __generate_nginx_conf {
       ROOT_DIR="/home/www/$REPOSITORY/www"
     fi
 
+    SERVER_NAME="server_name $DOMAINS;"
+
+    NGINX_LISTEN="listen *:80;"
+    if [ "$REPOSITORY" == "default_server" ]; then
+      NGINX_LISTEN="listen *:80 default_server;"
+      SERVER_NAME=""
+    fi
     cat << EOF > /etc/nginx/sites-enabled/$REPOSITORY
 server {
-  listen *:80;
-  server_name $DOMAINS;
+  $NGINX_LISTEN
+  $SERVER_NAME
   set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
   root $ROOT_DIR;
   location /.git { deny   all; }
