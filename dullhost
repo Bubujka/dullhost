@@ -127,12 +127,14 @@ if [ "\$REPOSITORY" == "env" ]; then
   for file in *; do
     sudo $SELF update-configs \$file
   done
+  sudo $SELF reload-configs
 else
   if [ ! -d "/home/www/\$REPOSITORY" ]; then
     sudo $SELF init-site \$REPOSITORY
   fi
   sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
   sudo $SELF update-configs \$REPOSITORY
+  sudo $SELF reload-configs
 fi
 EOF
 
@@ -181,13 +183,14 @@ EOF
     fi
 
     ;;
+  reload-configs)
+    service php5-fpm reload
+    service nginx reload
+    ;;
   update-configs)
     REPOSITORY=$2
     __generate_php_pool_conf $REPOSITORY
     __generate_nginx_conf $REPOSITORY
-
-    service php5-fpm reload
-    service nginx reload
     ;;
   init-site)
     REPOSITORY=$2
