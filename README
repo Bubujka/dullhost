@@ -3,3 +3,17 @@ wget -O - https://raw.github.com/Bubujka/dullhost/master/autoinstall | bash
 
 # Со своего компьютера
 cat ~/.ssh/id_rsa.pub | ssh root@YOUR_DOMAIN.RU 'dullhost upload-key YOUR_USER_NAME'
+
+-------
+Соглашения
+
+У каждого проекта, что будет развёрнут, должен быть:
+- файл CNAME со списком доменов через пробел
+- файл nginx.conf без указания server{}, root, listen, server_name
+
+- имя проекта должно соответствовать формату /^[a-z][a-z0-9_-']$/
+
+По желанию
+- в nginx.conf проекта можно записать 'include php_fastcgi;' или 'include php_fastcgi_internal;'
+- если у проекта будет папка www, то nginx установит $document_root на неё
+- если у проекта есть файл 'crontab' то он установлен для пользователя проекта
