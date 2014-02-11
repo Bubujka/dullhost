@@ -178,7 +178,7 @@ EOF
     ;;
 
   self-update)
-    wget -O - https://raw.github.com/Bubujka/dullhost/master/dullhost > /usr/local/bin/dullhost
+    wget -O - https://raw.github.com/Bubujka/dullhost/master/dullhost > /usr/local/bin/dullhost; exit;
     ;;
 
   update-site)
