@@ -71,8 +71,6 @@ EOF
 }
 
 
-
-
 case "$1" in
   # Public commands
   init) 
@@ -107,38 +105,9 @@ EOF
 
     chmod 440 /etc/sudoers.d/dullhost
     
-    cat > $GITHOME/receiver <<EOF
-#!/bin/bash
-REPOSITORY="\$1"
-REVISION="\$2"
-USERNAME="\$3"
-FINGERPRINT="\$4"
+    $SELF write-receiver
 
-if [ "\$REPOSITORY" == "env" ]; then
-  if [ ! -d "/home/git/env-files" ]; then
-    git clone /home/git/env /home/git/env-files
-  else
-    cd /home/git/env-files
-    git pull
-  fi
-  chmod 700 /home/git/env
-  chmod 700 /home/git/env-files
-  cd /home/git/env-files
-  for file in *; do
-    sudo $SELF update-configs \$file
-  done
-  sudo $SELF reload-configs
-else
-  if [ ! -d "/home/www/\$REPOSITORY" ]; then
-    sudo $SELF init-site \$REPOSITORY
-  fi
-  sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
-  sudo $SELF update-configs \$REPOSITORY
-  sudo $SELF reload-configs
-fi
-EOF
-
-cat > /etc/nginx/php_fastcgi <<EOF
+    cat > /etc/nginx/php_fastcgi <<EOF
 location ~ \.php$ {
   access_log  /var/log/nginx/access.log php;
   fastcgi_pass   \$php_pool;
@@ -149,7 +118,7 @@ location ~ \.php$ {
 }
 EOF
 
-cat > /etc/nginx/php_fastcgi_internal <<EOF
+    cat > /etc/nginx/php_fastcgi_internal <<EOF
 location ~ \.php$ {
   internal;
   access_log  /var/log/nginx/access.log php;
@@ -166,9 +135,45 @@ EOF
     echo "Created receiver script in $GITHOME for user '$GITUSER'."
     ;;
 
+  write-receiver)
+    cat > $GITHOME/receiver <<EOF
+#!/bin/bash
+REPOSITORY="\$1"
+REVISION="\$2"
+USERNAME="\$3"
+FINGERPRINT="\$4"
+
+if [ "\$REPOSITORY" == "env" ]; then
+  if [ ! -d "/home/git/env-files" ]; then
+    echo '+ Cloning env to env-files'
+    git clone /home/git/env /home/git/env-files
+  else
+    echo '+ Updating env-files'
+    git --git-dir=/home/git/env-files/.git --work-tree=/home/git/env-files pull
+  fi
+  chmod 700 /home/git/env
+  chmod 700 /home/git/env-files
+  cd /home/git/env-files
+  for file in *; do
+    sudo $SELF update-configs \$file
+  done
+  echo "+ Reloading php and nginx" 
+  sudo $SELF reload-configs
+else
+  if [ ! -d "/home/www/\$REPOSITORY" ]; then
+    sudo $SELF init-site \$REPOSITORY
+  fi
+  sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
+  sudo $SELF update-configs \$REPOSITORY
+  sudo $SELF reload-configs
+fi
+EOF
+    ;;
+
   self-update)
     wget -O - https://raw.github.com/Bubujka/dullhost/master/dullhost > /usr/local/bin/dullhost
     ;;
+
   update-site)
     REPOSITORY="$2"
 
@@ -183,15 +188,19 @@ EOF
     fi
 
     ;;
+
   reload-configs)
     service php5-fpm reload
     service nginx reload
     ;;
+
   update-configs)
     REPOSITORY=$2
+    echo "+ Updating $REPOSITORY configs" 
     __generate_php_pool_conf $REPOSITORY
     __generate_nginx_conf $REPOSITORY
     ;;
+
   init-site)
     REPOSITORY=$2
 
@@ -209,11 +218,11 @@ EOF
     ;;
 
 
-  upload-key) # sudo gitreceive upload-key <username>
+  upload-key) # sudo dullhost upload-key <username>
     KEY=$(cat)
     FINGERPRINT=$(ssh-keygen -lf /dev/stdin <<< $(echo $KEY) | awk '{print $2}')
     AUTHORIZED_KEYS=$GITHOME/.ssh/authorized_keys
-    # When this key is used, use the ssh 'forced command' feature to have 'gitreceive run' to run instead.
+    # When this key is used, use the ssh 'forced command' feature to have 'dullhost run' to run instead.
     KEY_PREFIX="command=\"$SELF run $2 $FINGERPRINT\",no-agent-forwarding,no-pty,no-user-rc,no-X11-forwarding,no-port-forwarding"
     echo "$KEY_PREFIX $KEY" >> $AUTHORIZED_KEYS
     echo $FINGERPRINT
