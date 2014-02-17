@@ -3,13 +3,13 @@
 Установка
 
 # На сервере от рута:
-wget -O - https://raw.github.com/Bubujka/dullhost/master/autoinstall | bash
+wget -O - https://raw.github.com/Bubujka/sakura/master/autoinstall | bash
 
 # Со своего компьютера
-cat ~/.ssh/id_rsa.pub | ssh root@YOUR_DOMAIN.RU 'dullhost upload-key YOUR_USER_NAME'
+cat ~/.ssh/id_rsa.pub | ssh root@YOUR_DOMAIN.RU 'sakura upload-key YOUR_USER_NAME'
 
 # Обновление (на сервере)
-dullhost self-update
+sakura self-update
 -------
 
 Соглашения
