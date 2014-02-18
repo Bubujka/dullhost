@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # Original idea: https://github.com/progrium/gitreceive
 # License: MIT
 
@@ -8,352 +7,341 @@ GITHOME="/home/$GITUSER"
 SELF=`which $0`
 
 function _update_apt {
-  apt-get update
+	apt-get update
 }
 
 function _install_helper_software {
-  apt-get install -y git curl
+	apt-get install -y git curl
 }
 
 function _install_nginx {
-  apt-get install -y nginx 
+	apt-get install -y nginx
 }
 
 function _install_php {
-  apt-get install -y php5-fpm php5-cli 
+	apt-get install -y php5-fpm php5-cli
 }
 
 function _install_php_modules {
-  apt-get install -y php5-mysql php5-curl 
+	apt-get install -y php5-mysql php5-curl
 }
 
 function _install_composer {
-  curl -sS https://getcomposer.org/installer | php
-  mv composer.phar /usr/local/bin/composer
+	curl -sS https://getcomposer.org/installer | php
+	mv composer.phar /usr/local/bin/composer
 }
 
 function _site_adduser {
-  adduser --gecos "" --disabled-password $1
-  usermod -a -G www-data $1
+	sudo adduser --gecos "" --disabled-password $1
+	sudo usermod -a -G www-data $1
 }
 
 function _site_make_log_directory {
-  mkdir /home/$1/log
-  chown -R $1:$1 /home/$1/log
+	sudo mkdir /home/$1/log
+	sudo chown -R $1:$1 /home/$1/log
 }
 
 function _site_make_session_directory {
-  mkdir /home/$1/session
-  chown -R $1:$1 /home/$1/session
+	sudo mkdir /home/$1/session
+	sudo chown -R $1:$1 /home/$1/session
 }
 
 function _site_clone_repository {
-  cd /home/www
-  git clone ~git/$1 $1
-  chown -R $1:$1 $1
+	cd /home/www
+	sudo git clone ~git/$1 $1
+	sudo chown -R $1:$1 $1
 }
 function _site_pull {
-  cd /home/www/$1
-  git pull
+	cd /home/www/$1
+	sudo -u $1 git pull
 }
 
 function _site_run_install_script {
-  if [ -f /home/www/$1/install ]; then
-    ./install
-  fi
+	if [ -f /home/www/$1/install ]; then
+		sudo -u $1 ./install
+	fi
 }
 
 function _reload_php {
-  service php5-fpm reload
+	sudo service php5-fpm reload
 }
 
 function _reload_nginx {
-  service nginx reload
+	sudo service nginx reload
 }
 
 function _site_install_crontab_file {
-  if [ -f /home/www/$1/crontab ]; then
-    crontab /home/www/$1/crontab  
-  fi
+	if [ -f /home/www/$1/crontab ]; then
+		sudo -u $1 crontab /home/www/$1/crontab
+	fi
 }
 
 function _configure_nginx {
-  cat > /etc/nginx/conf.d/sakura.conf <<EOF
-server_names_hash_bucket_size 256;
-log_format php  '\$status \$upstream_response_time \$http_host "\$request" '
-                '\$bytes_sent '
-                '"\$http_referer" - \$remote_addr - \$remote_user - "\$http_user_agent" '
-                '\$request_time [\$time_local]';
-access_log off;
-EOF
+	cat > /etc/nginx/conf.d/sakura.conf <<- EOF
+		server_names_hash_bucket_size 256;
+		log_format php	'\$status \$upstream_response_time \$http_host "\$request" '
+										'\$bytes_sent '
+										'"\$http_referer" - \$remote_addr - \$remote_user - "\$http_user_agent" '
+										'\$request_time [\$time_local]';
+		access_log off;
+		EOF
 }
 
 function _write_php_fastcgi_aliases {
-  cat > /etc/nginx/php_fastcgi <<EOF
-location ~ \.php$ {
-  access_log  /var/log/nginx/access.log php;
-  fastcgi_pass   \$php_pool;
-  fastcgi_index  index.php;
-  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
-  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
-  include        fastcgi_params;
-}
-EOF
+	cat > /etc/nginx/php_fastcgi <<- EOF
+		location ~ \.php$ {
+			access_log /var/log/nginx/access.log php;
+			fastcgi_pass \$php_pool;
+			fastcgi_index  index.php;
+			fastcgi_param  SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+			fastcgi_param  REDIRECT_QUERY_STRING \$query_string;
+			include fastcgi_params;
+		}
+		EOF
 
-  cat > /etc/nginx/php_fastcgi_internal <<EOF
-location ~ \.php$ {
-  internal;
-  access_log  /var/log/nginx/access.log php;
-  fastcgi_pass   \$php_pool;
-  fastcgi_index  index.php;
-  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
-  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
-  include        fastcgi_params;
-}
-EOF
+	cat > /etc/nginx/php_fastcgi_internal <<- EOF
+		location ~ \.php$ {
+			internal;
+			access_log /var/log/nginx/access.log php;
+			fastcgi_pass \$php_pool;
+			fastcgi_index  index.php;
+			fastcgi_param  SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+			fastcgi_param  REDIRECT_QUERY_STRING \$query_string;
+			include fastcgi_params;
+		}
+		EOF
 }
 
 function _download_fresh_sakura_script {
-  wget -O - https://raw.github.com/Bubujka/sakura/master/sakura > /usr/local/bin/sakura; exit;
+	wget -O - https://raw.github.com/Bubujka/sakura/master/sakura > /usr/local/bin/sakura; exit;
 }
 
 function _start_nginx {
-  service nginx start
+	service nginx start
 }
 
 function _create_git_user {
-  useradd -d $GITHOME $GITUSER || true
-  mkdir -p $GITHOME/.ssh
-  touch $GITHOME/.ssh/authorized_keys
+	useradd -d $GITHOME $GITUSER || true
+	mkdir -p $GITHOME/.ssh
+	touch $GITHOME/.ssh/authorized_keys
 }
 
 function _create_directory_for_www {
-  mkdir /home/www 
-  chown www-data:www-data /home/www
+	mkdir /home/www
+	chown www-data:www-data /home/www
 }
 
 function _write_sudo_permissions {
-  cat > /etc/sudoers.d/sakura <<EOF
-$GITUSER     ALL=(ALL) NOPASSWD: ALL
-EOF
-  chmod 440 /etc/sudoers.d/sakura
+	cat > /etc/sudoers.d/sakura <<- EOF
+		$GITUSER ALL=(ALL) NOPASSWD: ALL
+		EOF
+	chmod 440 /etc/sudoers.d/sakura
 }
 
 function _write_receiver {
-  cat > $GITHOME/receiver <<EOF
-#!/bin/bash
-REPOSITORY="\$1"
-REVISION="\$2"
-USERNAME="\$3"
-FINGERPRINT="\$4"
-
-if [ "\$REPOSITORY" == "env" ]; then
-  if [ ! -d "/home/git/env-files" ]; then
-    echo '+ Cloning env to env-files'
-    git clone /home/git/env /home/git/env-files
-  else
-    echo '+ Updating env-files'
-    git --git-dir=/home/git/env-files/.git --work-tree=/home/git/env-files pull
-  fi
-  chmod 700 /home/git/env
-  chmod 700 /home/git/env-files
-  cd /home/git/env-files
-  for file in *; do
-    sudo $SELF update-configs \$file
-  done
-  echo "+ Reloading php and nginx" 
-  sudo $SELF reload-configs
-else
-  if [ ! -d "/home/www/\$REPOSITORY" ]; then
-    sudo $SELF init-site \$REPOSITORY
-  fi
-  sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
-  sudo $SELF update-configs \$REPOSITORY
-  sudo $SELF reload-configs
-fi
-EOF
-  chmod +x $GITHOME/receiver
-  chown -R $GITUSER $GITHOME
+	cat > $GITHOME/receiver <<- EOF
+		#!/bin/bash
+		$SELF receiver \$@
+		EOF
+	chmod +x $GITHOME/receiver
+	chown -R $GITUSER $GITHOME
 }
 
 
 function _generate_php_pool_conf {
-  REPOSITORY="$1"
-  cat << EOF > /etc/php5/fpm/pool.d/${REPOSITORY}.conf
-[$REPOSITORY]
-user = \$pool
-group = \$pool
-listen = /var/run/php5-fpm-\$pool.sock
-pm = dynamic
-pm.max_children = 5
-pm.start_servers = 2
-pm.min_spare_servers = 1
-pm.max_spare_servers = 3
-pm.max_requests = 500
-;pm.status_path = /status
-;ping.path = /ping
-;access.log = log/\$pool.access.log
-slowlog = /home/\$pool/log/php-slow.log
-request_slowlog_timeout = 5
-request_terminate_timeout = 10
-;chroot = 
-chdir = /
-catch_workers_output = yes
-php_value[session.save_path]=/home/\$pool/sessions
-EOF
-  
-  if [ -f /home/git/env-files/$REPOSITORY ]; then
-    echo >> /etc/php5/fpm/pool.d/${REPOSITORY}.conf
-    cat /home/git/env-files/$REPOSITORY >> /etc/php5/fpm/pool.d/${REPOSITORY}.conf
-  fi
-  chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+	REPOSITORY="$1"
+	sudo tee /etc/php5/fpm/pool.d/${REPOSITORY}.conf <<- EOF > /dev/null
+		[$REPOSITORY]
+		user = \$pool
+		group = \$pool
+		listen = /var/run/php5-fpm-\$pool.sock
+		pm = dynamic
+		pm.max_children = 5
+		pm.start_servers = 2
+		pm.min_spare_servers = 1
+		pm.max_spare_servers = 3
+		pm.max_requests = 500
+		;pm.status_path = /status
+		;ping.path = /ping
+		;access.log = log/\$pool.access.log
+		slowlog = /home/\$pool/log/php-slow.log
+		request_slowlog_timeout = 5
+		request_terminate_timeout = 10
+		;chroot =
+		chdir = /
+		catch_workers_output = yes
+		php_value[session.save_path]=/home/\$pool/sessions
+		EOF
+	if [ -f /home/git/env-files/$REPOSITORY ]; then
+		echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+		cat /home/git/env-files/$REPOSITORY | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+	fi
+	sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 
+}
+
+function _clone_or_update_env_repository {
+	if [ ! -d "/home/git/env-files" ]; then
+		echo '+ Cloning env to env-files'
+		git clone /home/git/env /home/git/env-files
+		chmod 700 /home/git/env
+		chmod 700 /home/git/env-files
+	else
+		echo '+ Updating env-files'
+		git --git-dir=/home/git/env-files/.git --work-tree=/home/git/env-files pull
+	fi
+}
+
+function _update_all_env_configs {
+	cd /home/git/env-files
+	for NAME in *; do
+		_generate_php_pool_conf $NAME
+		_generate_nginx_conf $NAME
+	done
+}
+
+function _reload_php_and_nginx {
+	_reload_php
+	_reload_nginx
 }
 
 function _generate_nginx_conf {
-  REPOSITORY="$1"
-  NGINX_CONF="location / { return 444; }"
-  if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
-    NGINX_CONF="include /home/www/$REPOSITORY/nginx.conf;"
-  fi
+	REPOSITORY="$1"
+	NGINX_CONF="location / { return 444; }"
+	if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
+		NGINX_CONF="include /home/www/$REPOSITORY/nginx.conf;"
+	fi
 
-  if [ -f /home/www/$REPOSITORY/CNAME ]; then
-    DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
-    ROOT_DIR="/home/www/$REPOSITORY"
-    if [ -d /home/www/$REPOSITORY/www ]; then
-      ROOT_DIR="/home/www/$REPOSITORY/www"
-    fi
+	if [ -f /home/www/$REPOSITORY/CNAME ]; then
+		DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
+		ROOT_DIR="/home/www/$REPOSITORY"
+		if [ -d /home/www/$REPOSITORY/www ]; then
+			ROOT_DIR="/home/www/$REPOSITORY/www"
+		fi
 
-    SERVER_NAME="server_name $DOMAINS;"
+		SERVER_NAME="server_name $DOMAINS;"
 
-    NGINX_LISTEN="listen *:80;"
-    if [ "$REPOSITORY" == "default_server" ]; then
-      NGINX_LISTEN="listen *:80 default_server;"
-      SERVER_NAME=""
-    fi
-    cat << EOF > /etc/nginx/sites-enabled/$REPOSITORY
-server {
-  $NGINX_LISTEN
-  $SERVER_NAME
-  set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
-  root $ROOT_DIR;
-  location /.git { deny   all; }
-  $NGINX_CONF
-}
-EOF
-  else
-    echo > /etc/nginx/sites-enabled/$REPOSITORY
-  fi
+		NGINX_LISTEN="listen *:80;"
+		if [ "$REPOSITORY" == "default_server" ]; then
+			NGINX_LISTEN="listen *:80 default_server;"
+			SERVER_NAME=""
+		fi
+		sudo tee /etc/nginx/sites-enabled/$REPOSITORY <<- EOF > /dev/null
+			server {
+				$NGINX_LISTEN
+				$SERVER_NAME
+				set \$php_pool unix:/var/run/php5-fpm-$REPOSITORY.sock;
+				root $ROOT_DIR;
+				location /.git { deny all; }
+				$NGINX_CONF
+			}
+			EOF
+	else
+		echo | sudo tee /etc/nginx/sites-enabled/$REPOSITORY
+	fi
 }
 
 
 case "$1" in
-  init) 
-    _update_apt
+	init)
+		_update_apt
 
-    _install_helper_software
+		_install_helper_software
 
-    _install_nginx
-    _configure_nginx
-    _write_php_fastcgi_aliases
-    _start_nginx
-    _install_php
-    _install_php_modules
-    _install_composer
+		_install_nginx
+		_configure_nginx
+		_write_php_fastcgi_aliases
+		_start_nginx
+		_install_php
+		_install_php_modules
+		_install_composer
 
-    _create_git_user
-    
-    _create_directory_for_www
+		_create_git_user
+		
+		_create_directory_for_www
 
-    _write_sudo_permissions
-    _write_receiver
-    ;;
+		_write_sudo_permissions
+		_write_receiver
+		;;
+	receiver)
+		NAME="$2"
 
-  write-receiver)
-    _write_receiver
-    ;;
+		if [ "$NAME" == "env" ]; then
+			_clone_or_update_env_repository
+			_update_all_env_configs
+		else
+			if [ ! -d "/home/www/$NAME" ]; then
+				_site_adduser $NAME
+				_site_make_log_directory $NAME
+				_site_make_session_directory $NAME
+				_site_clone_repository $NAME
+			fi
+			_site_pull $NAME
+			_site_run_install_script $NAME
+			_site_install_crontab_file $NAME
 
-  self-update)
-    _download_fresh_sakura_script
-    _write_receiver
-    ;;
+			echo "+ Updating $NAME configs"
+			_generate_php_pool_conf $NAME
+			_generate_nginx_conf $NAME
+		fi
 
-  update-site)
-    # site-user cmd
-    NAME="$2"
-    _site_pull $NAME
-    _site_run_install_script $NAME
-    _site_install_crontab_file $NAME
-    ;;
+		echo "+ Reloading php and nginx"
+		_reload_php_and_nginx
+		;;
 
-  reload-configs)
-    # root cmd
-    _reload_php
-    _reload_nginx
-    ;;
+	write-receiver)
+		_write_receiver
+		;;
 
-  update-configs)
-    NAME=$2
-    echo "+ Updating $NAME configs" 
-    _generate_php_pool_conf $NAME
-    _generate_nginx_conf $NAME
-    ;;
+	self-update)
+		_download_fresh_sakura_script
+		_write_receiver
+		;;
 
-  init-site)
-    # root cmd
-    NAME=$2
-
-    _site_adduser $NAME
-    _site_make_log_directory $NAME
-    _site_make_session_directory $NAME
-    _site_clone_repository $NAME
-
-    ;;
-
-
-  upload-key) # sudo sakura upload-key <username>
-    KEY=$(cat)
-    FINGERPRINT=$(ssh-keygen -lf /dev/stdin <<< $(echo $KEY) | awk '{print $2}')
-    AUTHORIZED_KEYS=$GITHOME/.ssh/authorized_keys
-    # When this key is used, use the ssh 'forced command' feature to have 'sakura run' to run instead.
-    KEY_PREFIX="command=\"$SELF run $2 $FINGERPRINT\",no-agent-forwarding,no-pty,no-user-rc,no-X11-forwarding,no-port-forwarding"
-    echo "$KEY_PREFIX $KEY" >> $AUTHORIZED_KEYS
-    echo $FINGERPRINT
-    ;;
+	upload-key) # sudo sakura upload-key <username>
+		KEY=$(cat)
+		FINGERPRINT=$(ssh-keygen -lf /dev/stdin <<< $(echo $KEY) | awk '{print $2}')
+		AUTHORIZED_KEYS=$GITHOME/.ssh/authorized_keys
+		# When this key is used, use the ssh 'forced command' feature to have 'sakura run' to run instead.
+		KEY_PREFIX="command=\"$SELF run $2 $FINGERPRINT\",no-agent-forwarding,no-pty,no-user-rc,no-X11-forwarding,no-port-forwarding"
+		echo "$KEY_PREFIX $KEY" >> $AUTHORIZED_KEYS
+		echo $FINGERPRINT
+		;;
 
 # Internal commands
-  run) 
-    export RECEIVE_USER=$2
-    export RECEIVE_FINGERPRINT=$3
-    # ssh provides the original requested command in $SSH_ORIGINAL_COMMAND
-    export RECEIVE_REPO="$(echo $SSH_ORIGINAL_COMMAND | awk '{print $2}' | perl -pe 's/(?<!\\)'\''//g' | sed 's/\\'\''/'\''/g')" # '
-    REPO_PATH="$GITHOME/$RECEIVE_REPO"
-    if [ ! -d $REPO_PATH ]; then
-      mkdir -p $REPO_PATH
-      cd $REPO_PATH
-      git init --bare > /dev/null
-    fi
-    cd $GITHOME
-    POSTRECEIVE_HOOK="$REPO_PATH/hooks/post-receive"
-    cat > $POSTRECEIVE_HOOK <<EOF
-#!/bin/bash
-cat | $SELF hook
-EOF
-    chmod +x $POSTRECEIVE_HOOK
-    git-shell -c "$SSH_ORIGINAL_COMMAND"
-    ;;
+	run)
+		export RECEIVE_USER=$2
+		export RECEIVE_FINGERPRINT=$3
+		# ssh provides the original requested command in $SSH_ORIGINAL_COMMAND
+		export RECEIVE_REPO="$(echo $SSH_ORIGINAL_COMMAND | awk '{print $2}' | perl -pe 's/(?<!\\)'\''//g' | sed 's/\\'\''/'\''/g')" # '
+		REPO_PATH="$GITHOME/$RECEIVE_REPO"
+		if [ ! -d $REPO_PATH ]; then
+			mkdir -p $REPO_PATH
+			cd $REPO_PATH
+			git init --bare > /dev/null
+		fi
+		cd $GITHOME
+		POSTRECEIVE_HOOK="$REPO_PATH/hooks/post-receive"
+		cat > $POSTRECEIVE_HOOK <<- EOF
+			#!/bin/bash
+			cat | $SELF hook
+			EOF
+		chmod +x $POSTRECEIVE_HOOK
+		git-shell -c "$SSH_ORIGINAL_COMMAND"
+		;;
 
-  hook)
-    while read oldrev newrev refname
-    do
-      # Only run this script for the master branch. You can remove this 
-      # if block if you wish to run it for others as well.
-      if [[ $refname = "refs/heads/master" ]] ; then
-        $GITHOME/receiver "$RECEIVE_REPO" "$newrev" "$RECEIVE_USER" "$RECEIVE_FINGERPRINT"  
-      fi
-    done
-    ;;
-  *)
-    echo "Usage: sakura <command> [options]"
-    ;;
+	hook)
+		while read oldrev newrev refname
+		do
+			# Only run this script for the master branch. You can remove this
+			# if block if you wish to run it for others as well.
+			if [[ $refname = "refs/heads/master" ]] ; then
+				$GITHOME/receiver "$RECEIVE_REPO" "$newrev" "$RECEIVE_USER" "$RECEIVE_FINGERPRINT"
+			fi
+		done
+		;;
+	*)
+		echo "Usage: sakura <command> [options]"
+		;;
 esac
+# vim: noexpandtab ts=2 sw=2

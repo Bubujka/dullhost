@@ -1,4 +1,5 @@
 #!/bin/bash
+LOG_FILE=`pwd`/test.log
 function red_echo {
   echo -e "\e[1;31m$@\e[0m"
 }
@@ -23,14 +24,14 @@ function _recreate_tmp_directory {
 function _create_rep {
   mkdir $1
   cd $1
-  git init
+  git init > /dev/null
   echo "$1.ololo.tld" > CNAME
   echo "index index.html;" > nginx.conf
   echo "Hello from $1" > index.html
-  git add .  
-  git commit -m 'Initial commit'
+  git add .
+  git commit -m 'Initial commit' 2> /dev/null > /dev/null
   git remote add origin git@192.168.56.67:$1
-  git push -u origin master
+  git push -u origin master 2> /dev/null > /dev/null
   cd ..
 }
 function _change_nginx_config_on_prja {
@@ -38,18 +39,18 @@ function _change_nginx_config_on_prja {
   echo 'index index2.html;' > nginx.conf
   echo "index2" > index2.html
   git add .
-  git commit -m "nginx changing"
+  git commit -m "nginx changing" 2> /dev/null > /dev/null
   cd ..
 }
 function _create_env {
   mkdir env
   cd env
-  git init
+  git init > /dev/null
   touch prjenvtester
   git add .
-  git commit -m 'initial commit'
+  git commit -m 'initial commit' 2> /dev/null > /dev/null
   git remote add origin git@192.168.56.67:env
-  git push -u origin master
+  git push -u origin master 2> /dev/null > /dev/null
   cd ..
 }
 function _create_prja {
@@ -65,7 +66,7 @@ function _create_prjenvtester {
   echo 'include php_fastcgi;' >> nginx.conf
   echo '<?php echo "+".$_SERVER["my_env"]."+" ?>' > index.php
   git add .
-  git commit -m 'PHP files'
+  git commit -m 'PHP files' 2> /dev/null > /dev/null
   cd ..
 }
 function _create_prjphp {
@@ -75,7 +76,7 @@ function _create_prjphp {
   echo 'include php_fastcgi;' >> nginx.conf
   echo '<?php echo 1+5; ?>' > index.php
   git add .
-  git commit -m 'PHP files'
+  git commit -m 'PHP files' 2> /dev/null > /dev/null
   cd ..
 }
 
@@ -88,13 +89,13 @@ function _create_prjphpinternal {
   echo '<?php echo $_SERVER["REQUEST_URI"]; ?>' > index.php
 
   git add .
-  git commit -m 'PHP files'
+  git commit -m 'PHP files' 2> /dev/null > /dev/null
   cd ..
 }
 
 function _push {
   cd $1
-  git push origin master
+  git push origin master 2> /dev/null > /dev/null
   cd ..
 }
 function _test_nothing_in_env {
@@ -102,10 +103,10 @@ function _test_nothing_in_env {
 }
 
 function _http_test {
-  vagrant ssh -c 'sudo service nginx stop'
-  vagrant ssh -c 'sudo service php5-fpm stop'
-  vagrant ssh -c 'sudo service nginx start'
-  vagrant ssh -c 'sudo service php5-fpm start'
+  vagrant ssh -c 'sudo service nginx stop' > /dev/null
+  vagrant ssh -c 'sudo service php5-fpm stop' > /dev/null
+  vagrant ssh -c 'sudo service nginx start' > /dev/null
+  vagrant ssh -c 'sudo service php5-fpm start' > /dev/null
   echo -n "Testing $1$2 for $3"
   curl -s --header "Host: $1" 192.168.56.67$2  | grep "$3" > /dev/null  && green_echo " OK" || red_echo " FAIL"
 }
@@ -133,9 +134,9 @@ function _test_something_in_env {
 function _write_something_to_env {
   cd env
   echo "env[my_env]='hello'" > prjenvtester
-  git add . 
-  git commit -m 'env'
-  git push
+  git add .
+  git commit -m 'env' 2> /dev/null > /dev/null
+  git push 2> /dev/null > /dev/null
   cd ..
 }
 
