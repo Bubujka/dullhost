@@ -46,7 +46,8 @@ function _create_env {
   mkdir env
   cd env
   git init > /dev/null
-  touch prjenvtester
+	mkdir prjenvtester
+  touch prjenvtester/php-pool.conf
   git add .
   git commit -m 'initial commit' 2> /dev/null > /dev/null
   git remote add origin git@192.168.56.67:env
@@ -133,7 +134,7 @@ function _test_something_in_env {
 }
 function _write_something_to_env {
   cd env
-  echo "env[my_env]='hello'" > prjenvtester
+  echo "env[my_env]='hello'" > prjenvtester/php-pool.conf
   git add .
   git commit -m 'env' 2> /dev/null > /dev/null
   git push 2> /dev/null > /dev/null
