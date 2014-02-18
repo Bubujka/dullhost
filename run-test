@@ -1,4 +1,6 @@
 #!/bin/bash
+vagrant destroy -f
+vagrant up
 . ./testfunctions
 _upload_my_key
 _recreate_tmp_directory

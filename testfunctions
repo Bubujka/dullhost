@@ -1,3 +1,4 @@
+#!/bin/bash
 function red_echo {
   echo -e "\e[1;31m$@\e[0m"
 }
@@ -7,7 +8,10 @@ function green_echo {
 }
 
 function _upload_my_key {
+  cp ~/.ssh/id_rsa.pub ./
+  vagrant ssh -c 'cat /vagrant/id_rsa.pub >> ~/.ssh/authorized_keys'
   cat ~/.ssh/id_rsa.pub | ssh vagrant@192.168.56.67 sudo sakura upload-key bubujka
+  rm id_rsa.pub
 }
 
 function _recreate_tmp_directory {
@@ -173,3 +177,4 @@ function _test_env_repository {
 
   _test_something_in_env
 }
+

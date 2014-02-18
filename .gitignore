@@ -1,2 +1,4 @@
 .vagrant
 tmp
+test.log
+id_rsa.pub

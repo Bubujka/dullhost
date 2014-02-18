@@ -177,15 +177,6 @@ EOF
 }
 
 
-
-
-
-
-
-
-
-
-
 function _generate_php_pool_conf {
   REPOSITORY="$1"
   cat << EOF > /etc/php5/fpm/pool.d/${REPOSITORY}.conf
