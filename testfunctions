@@ -1,0 +1,175 @@
+function red_echo {
+  echo -e "\e[1;31m$@\e[0m"
+}
+
+function green_echo {
+  echo -e "\e[1;32m$@\e[0m"
+}
+
+function _upload_my_key {
+  cat ~/.ssh/id_rsa.pub | ssh vagrant@192.168.56.67 sudo sakura upload-key bubujka
+}
+
+function _recreate_tmp_directory {
+  rm -rf tmp
+  mkdir tmp
+  cd tmp
+}
+
+function _create_rep {
+  mkdir $1
+  cd $1
+  git init
+  echo "$1.ololo.tld" > CNAME
+  echo "index index.html;" > nginx.conf
+  echo "Hello from $1" > index.html
+  git add .  
+  git commit -m 'Initial commit'
+  git remote add origin git@192.168.56.67:$1
+  git push -u origin master
+  cd ..
+}
+function _change_nginx_config_on_prja {
+  cd prja
+  echo 'index index2.html;' > nginx.conf
+  echo "index2" > index2.html
+  git add .
+  git commit -m "nginx changing"
+  cd ..
+}
+function _create_env {
+  mkdir env
+  cd env
+  git init
+  touch prjenvtester
+  git add .
+  git commit -m 'initial commit'
+  git remote add origin git@192.168.56.67:env
+  git push -u origin master
+  cd ..
+}
+function _create_prja {
+  _create_rep prja
+}
+function _create_prjb {
+  _create_rep prjb
+}
+function _create_prjenvtester {
+  _create_rep prjenvtester
+  cd prjenvtester
+  echo 'index index.php;' > nginx.conf
+  echo 'include php_fastcgi;' >> nginx.conf
+  echo '<?php echo "+".$_SERVER["my_env"]."+" ?>' > index.php
+  git add .
+  git commit -m 'PHP files'
+  cd ..
+}
+function _create_prjphp {
+  _create_rep prjphp
+  cd prjphp
+  echo 'index index.php;' > nginx.conf
+  echo 'include php_fastcgi;' >> nginx.conf
+  echo '<?php echo 1+5; ?>' > index.php
+  git add .
+  git commit -m 'PHP files'
+  cd ..
+}
+
+function _create_prjphpinternal {
+  _create_rep prjphpinternal
+  cd prjphpinternal
+
+  echo 'location / { rewrite  ^(.*)$ /index.php?$1; }' > nginx.conf
+  echo 'include php_fastcgi_internal;' >> nginx.conf
+  echo '<?php echo $_SERVER["REQUEST_URI"]; ?>' > index.php
+
+  git add .
+  git commit -m 'PHP files'
+  cd ..
+}
+
+function _push {
+  cd $1
+  git push origin master
+  cd ..
+}
+function _test_nothing_in_env {
+  _http_test prjenvtester.ololo.tld / "++"
+}
+
+function _http_test {
+  vagrant ssh -c 'sudo service nginx stop'
+  vagrant ssh -c 'sudo service php5-fpm stop'
+  vagrant ssh -c 'sudo service nginx start'
+  vagrant ssh -c 'sudo service php5-fpm start'
+  echo -n "Testing $1$2 for $3"
+  curl -s --header "Host: $1" 192.168.56.67$2  | grep "$3" > /dev/null  && green_echo " OK" || red_echo " FAIL"
+}
+
+function _test_prja_and_prjb_exists {
+  _http_test prja.ololo.tld / "prja"
+  _http_test prjb.ololo.tld / "prjb"
+}
+
+function _test_prja_with_changed_nginx_config {
+  _http_test prja.ololo.tld / "index2"
+}
+
+function _test_prjphp {
+  _http_test prjphp.ololo.tld / "6"
+}
+
+function _test_prjphpinternal {
+  _http_test prjphpinternal.ololo.tld /ololo "ololo"
+  _http_test prjphpinternal.ololo.tld /lalala "lalala"
+}
+function _test_something_in_env {
+  _http_test prjenvtester.ololo.tld / "+hello+"
+}
+function _write_something_to_env {
+  cd env
+  echo "env[my_env]='hello'" > prjenvtester
+  git add . 
+  git commit -m 'env'
+  git push
+  cd ..
+}
+
+function _test_basic_prj_creation {
+  _create_prja
+  _push prja
+
+  _create_prjb
+  _push prjb
+
+  _test_prja_and_prjb_exists
+}
+
+function _test_nginx_changing {
+  _change_nginx_config_on_prja
+  _push prja
+  _test_prja_with_changed_nginx_config
+}
+
+function _test_public_php {
+  _create_prjphp
+  _push prjphp
+  _test_prjphp
+}
+function _test_internal_php {
+  _create_prjphpinternal
+  _push prjphpinternal
+  _test_prjphpinternal
+}
+
+function _test_env_repository {
+  _create_env
+  _create_prjenvtester
+  _push env
+  _push prjenvtester
+
+  _test_nothing_in_env
+  _write_something_to_env
+
+  _test_something_in_env
+}

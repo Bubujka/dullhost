@@ -1,0 +1,10 @@
+#!/bin/bash
+. ./testfunctions
+_upload_my_key
+_recreate_tmp_directory
+
+_test_basic_prj_creation
+_test_nginx_changing
+_test_public_php
+_test_internal_php
+_test_env_repository

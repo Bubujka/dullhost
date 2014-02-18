@@ -7,8 +7,186 @@ GITUSER=${GITUSER:-git}
 GITHOME="/home/$GITUSER"
 SELF=`which $0`
 
+function _update_apt {
+  apt-get update
+}
 
-function __generate_php_pool_conf {
+function _install_helper_software {
+  apt-get install -y git curl
+}
+
+function _install_nginx {
+  apt-get install -y nginx 
+}
+
+function _install_php {
+  apt-get install -y php5-fpm php5-cli 
+}
+
+function _install_php_modules {
+  apt-get install -y php5-mysql php5-curl 
+}
+
+function _install_composer {
+  curl -sS https://getcomposer.org/installer | php
+  mv composer.phar /usr/local/bin/composer
+}
+
+function _site_adduser {
+  adduser --gecos "" --disabled-password $1
+  usermod -a -G www-data $1
+}
+
+function _site_make_log_directory {
+  mkdir /home/$1/log
+  chown -R $1:$1 /home/$1/log
+}
+
+function _site_make_session_directory {
+  mkdir /home/$1/session
+  chown -R $1:$1 /home/$1/session
+}
+
+function _site_clone_repository {
+  cd /home/www
+  git clone ~git/$1 $1
+  chown -R $1:$1 $1
+}
+function _site_pull {
+  cd /home/www/$1
+  git pull
+}
+
+function _site_run_install_script {
+  if [ -f /home/www/$1/install ]; then
+    ./install
+  fi
+}
+
+function _reload_php {
+  service php5-fpm reload
+}
+
+function _reload_nginx {
+  service nginx reload
+}
+
+function _site_install_crontab_file {
+  if [ -f /home/www/$1/crontab ]; then
+    crontab /home/www/$1/crontab  
+  fi
+}
+
+function _configure_nginx {
+  cat > /etc/nginx/conf.d/sakura.conf <<EOF
+server_names_hash_bucket_size 256;
+log_format php  '\$status \$upstream_response_time \$http_host "\$request" '
+                '\$bytes_sent '
+                '"\$http_referer" - \$remote_addr - \$remote_user - "\$http_user_agent" '
+                '\$request_time [\$time_local]';
+access_log off;
+EOF
+}
+
+function _write_php_fastcgi_aliases {
+  cat > /etc/nginx/php_fastcgi <<EOF
+location ~ \.php$ {
+  access_log  /var/log/nginx/access.log php;
+  fastcgi_pass   \$php_pool;
+  fastcgi_index  index.php;
+  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
+  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
+  include        fastcgi_params;
+}
+EOF
+
+  cat > /etc/nginx/php_fastcgi_internal <<EOF
+location ~ \.php$ {
+  internal;
+  access_log  /var/log/nginx/access.log php;
+  fastcgi_pass   \$php_pool;
+  fastcgi_index  index.php;
+  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
+  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
+  include        fastcgi_params;
+}
+EOF
+}
+
+function _download_fresh_sakura_script {
+  wget -O - https://raw.github.com/Bubujka/sakura/master/sakura > /usr/local/bin/sakura; exit;
+}
+
+function _start_nginx {
+  service nginx start
+}
+
+function _create_git_user {
+  useradd -d $GITHOME $GITUSER || true
+  mkdir -p $GITHOME/.ssh
+  touch $GITHOME/.ssh/authorized_keys
+}
+
+function _create_directory_for_www {
+  mkdir /home/www 
+  chown www-data:www-data /home/www
+}
+
+function _write_sudo_permissions {
+  cat > /etc/sudoers.d/sakura <<EOF
+$GITUSER     ALL=(ALL) NOPASSWD: ALL
+EOF
+  chmod 440 /etc/sudoers.d/sakura
+}
+
+function _write_receiver {
+  cat > $GITHOME/receiver <<EOF
+#!/bin/bash
+REPOSITORY="\$1"
+REVISION="\$2"
+USERNAME="\$3"
+FINGERPRINT="\$4"
+
+if [ "\$REPOSITORY" == "env" ]; then
+  if [ ! -d "/home/git/env-files" ]; then
+    echo '+ Cloning env to env-files'
+    git clone /home/git/env /home/git/env-files
+  else
+    echo '+ Updating env-files'
+    git --git-dir=/home/git/env-files/.git --work-tree=/home/git/env-files pull
+  fi
+  chmod 700 /home/git/env
+  chmod 700 /home/git/env-files
+  cd /home/git/env-files
+  for file in *; do
+    sudo $SELF update-configs \$file
+  done
+  echo "+ Reloading php and nginx" 
+  sudo $SELF reload-configs
+else
+  if [ ! -d "/home/www/\$REPOSITORY" ]; then
+    sudo $SELF init-site \$REPOSITORY
+  fi
+  sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
+  sudo $SELF update-configs \$REPOSITORY
+  sudo $SELF reload-configs
+fi
+EOF
+  chmod +x $GITHOME/receiver
+  chown -R $GITUSER $GITHOME
+}
+
+
+
+
+
+
+
+
+
+
+
+function _generate_php_pool_conf {
   REPOSITORY="$1"
   cat << EOF > /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 [$REPOSITORY]
@@ -41,7 +219,7 @@ EOF
 
 }
 
-function __generate_nginx_conf {
+function _generate_nginx_conf {
   REPOSITORY="$1"
   NGINX_CONF="location / { return 444; }"
   if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
@@ -79,149 +257,66 @@ EOF
 
 
 case "$1" in
-  # Public commands
   init) 
-    apt-get update
-    apt-get install -y nginx git php5-fpm php5-mysql php5-cli php5-curl curl
+    _update_apt
 
-    curl -sS https://getcomposer.org/installer | php
-    mv composer.phar /usr/local/bin/composer
+    _install_helper_software
 
-    cat > /etc/nginx/conf.d/sakura.conf <<EOF
-server_names_hash_bucket_size 256;
-log_format php  '\$status \$upstream_response_time \$http_host "\$request" '
-                '\$bytes_sent '
-                '"\$http_referer" - \$remote_addr - \$remote_user - "\$http_user_agent" '
-                '\$request_time [\$time_local]';
-access_log off;
-EOF
+    _install_nginx
+    _configure_nginx
+    _write_php_fastcgi_aliases
+    _start_nginx
+    _install_php
+    _install_php_modules
+    _install_composer
 
-    service nginx start
-
-    useradd -d $GITHOME $GITUSER || true
-    mkdir -p $GITHOME/.ssh
-    mkdir /home/www 
-
-    chown www-data:www-data /home/www
-
-    touch $GITHOME/.ssh/authorized_keys
-
-    cat > /etc/sudoers.d/sakura <<EOF
-$GITUSER     ALL=(ALL) NOPASSWD: ALL
-EOF
-
-    chmod 440 /etc/sudoers.d/sakura
+    _create_git_user
     
-    $SELF write-receiver
+    _create_directory_for_www
 
-    cat > /etc/nginx/php_fastcgi <<EOF
-location ~ \.php$ {
-  access_log  /var/log/nginx/access.log php;
-  fastcgi_pass   \$php_pool;
-  fastcgi_index  index.php;
-  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
-  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
-  include        fastcgi_params;
-}
-EOF
-
-    cat > /etc/nginx/php_fastcgi_internal <<EOF
-location ~ \.php$ {
-  internal;
-  access_log  /var/log/nginx/access.log php;
-  fastcgi_pass   \$php_pool;
-  fastcgi_index  index.php;
-  fastcgi_param  SCRIPT_FILENAME  \$document_root\$fastcgi_script_name;
-  fastcgi_param  REDIRECT_QUERY_STRING     \$query_string;
-  include        fastcgi_params;
-}
-EOF
-
-    chmod +x $GITHOME/receiver
-    chown -R $GITUSER $GITHOME
-    echo "Created receiver script in $GITHOME for user '$GITUSER'."
+    _write_sudo_permissions
+    _write_receiver
     ;;
 
   write-receiver)
-    cat > $GITHOME/receiver <<EOF
-#!/bin/bash
-REPOSITORY="\$1"
-REVISION="\$2"
-USERNAME="\$3"
-FINGERPRINT="\$4"
-
-if [ "\$REPOSITORY" == "env" ]; then
-  if [ ! -d "/home/git/env-files" ]; then
-    echo '+ Cloning env to env-files'
-    git clone /home/git/env /home/git/env-files
-  else
-    echo '+ Updating env-files'
-    git --git-dir=/home/git/env-files/.git --work-tree=/home/git/env-files pull
-  fi
-  chmod 700 /home/git/env
-  chmod 700 /home/git/env-files
-  cd /home/git/env-files
-  for file in *; do
-    sudo $SELF update-configs \$file
-  done
-  echo "+ Reloading php and nginx" 
-  sudo $SELF reload-configs
-else
-  if [ ! -d "/home/www/\$REPOSITORY" ]; then
-    sudo $SELF init-site \$REPOSITORY
-  fi
-  sudo -u \$REPOSITORY $SELF update-site \$REPOSITORY
-  sudo $SELF update-configs \$REPOSITORY
-  sudo $SELF reload-configs
-fi
-EOF
+    _write_receiver
     ;;
 
   self-update)
-    wget -O - https://raw.github.com/Bubujka/sakura/master/sakura > /usr/local/bin/sakura; exit;
+    _download_fresh_sakura_script
+    _write_receiver
     ;;
 
   update-site)
-    REPOSITORY="$2"
-
-    cd /home/www/$REPOSITORY
-    git pull
-
-    if [ -f /home/www/$REPOSITORY/install ]; then
-      ./install
-    fi
-    if [ -f /home/www/$REPOSITORY/crontab ]; then
-      crontab /home/www/$REPOSITORY/crontab  
-    fi
-
+    # site-user cmd
+    NAME="$2"
+    _site_pull $NAME
+    _site_run_install_script $NAME
+    _site_install_crontab_file $NAME
     ;;
 
   reload-configs)
-    service php5-fpm reload
-    service nginx reload
+    # root cmd
+    _reload_php
+    _reload_nginx
     ;;
 
   update-configs)
-    REPOSITORY=$2
-    echo "+ Updating $REPOSITORY configs" 
-    __generate_php_pool_conf $REPOSITORY
-    __generate_nginx_conf $REPOSITORY
+    NAME=$2
+    echo "+ Updating $NAME configs" 
+    _generate_php_pool_conf $NAME
+    _generate_nginx_conf $NAME
     ;;
 
   init-site)
-    REPOSITORY=$2
+    # root cmd
+    NAME=$2
 
-    adduser --gecos "" --disabled-password $REPOSITORY
+    _site_adduser $NAME
+    _site_make_log_directory $NAME
+    _site_make_session_directory $NAME
+    _site_clone_repository $NAME
 
-    mkdir /home/$REPOSITORY/log
-    mkdir /home/$REPOSITORY/sessions
-    chown -R $REPOSITORY:$REPOSITORY /home/$REPOSITORY/log /home/$REPOSITORY/sessions
-
-    usermod -a -G www-data $REPOSITORY
-
-    cd /home/www
-    git clone ~git/$REPOSITORY $REPOSITORY
-    chown -R $REPOSITORY:$REPOSITORY $REPOSITORY
     ;;
 
 
@@ -240,7 +335,7 @@ EOF
     export RECEIVE_USER=$2
     export RECEIVE_FINGERPRINT=$3
     # ssh provides the original requested command in $SSH_ORIGINAL_COMMAND
-    export RECEIVE_REPO="$(echo $SSH_ORIGINAL_COMMAND | awk '{print $2}' | perl -pe 's/(?<!\\)'\''//g' | sed 's/\\'\''/'\''/g')"
+    export RECEIVE_REPO="$(echo $SSH_ORIGINAL_COMMAND | awk '{print $2}' | perl -pe 's/(?<!\\)'\''//g' | sed 's/\\'\''/'\''/g')" # '
     REPO_PATH="$GITHOME/$RECEIVE_REPO"
     if [ ! -d $REPO_PATH ]; then
       mkdir -p $REPO_PATH
