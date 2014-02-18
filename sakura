@@ -72,7 +72,16 @@ function _reload_nginx {
 
 function _site_install_crontab_file {
 	if [ -f /home/www/$1/crontab ]; then
-		sudo -u $1 crontab /home/www/$1/crontab
+		if [ -f /home/git/env-files/$1/crontab ]; then
+			TMP_FILE=`mktemp`
+			cat /home/git/env-files/$1/crontab > $TMP_FILE
+			echo >> $TMP_FILE
+			cat /home/www/$1/crontab >> $TMP_FILE
+			sudo crontab -u $1  $TMP_FILE
+			rm $TMP_FILE
+		else
+			sudo -u $1 crontab /home/www/$1/crontab
+		fi
 	fi
 }
 
@@ -195,6 +204,7 @@ function _clone_or_update_env_repository {
 function _update_prj_configs {
 	NAME="$1"
 	echo "+ Updating $NAME configs"
+	_site_install_crontab_file $NAME
 	_generate_php_pool_conf $NAME
 	_generate_nginx_conf $NAME
 }
@@ -289,7 +299,6 @@ case "$1" in
 			fi
 			_site_pull $NAME
 			_site_run_install_script $NAME
-			_site_install_crontab_file $NAME
 
 			_update_prj_configs $NAME
 		fi

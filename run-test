@@ -10,3 +10,6 @@ _test_nginx_changing
 _test_public_php
 _test_internal_php
 _test_env_repository
+
+_test_crontab_file
+_test_crontab_file_with_env

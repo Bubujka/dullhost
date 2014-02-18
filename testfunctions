@@ -162,6 +162,7 @@ function _test_public_php {
   _push prjphp
   _test_prjphp
 }
+
 function _test_internal_php {
   _create_prjphpinternal
   _push prjphpinternal
@@ -180,3 +181,30 @@ function _test_env_repository {
   _test_something_in_env
 }
 
+function _test_crontab_file {
+  _create_rep crontest
+  cd crontest
+  echo 'index index.php;' > nginx.conf
+  echo 'include php_fastcgi;' >> nginx.conf
+  echo '<?php echo `crontab -l`; ?>' > index.php
+	echo '# initial string' > crontab
+  git add .
+  git commit -m 'testfiles' 2> /dev/null > /dev/null
+  cd ..
+
+	_push crontest
+
+	_http_test crontest.ololo.tld / 'initial string'
+}
+
+function _test_crontab_file_with_env {
+	cd env
+	mkdir crontest 
+	echo "# prepare string" > crontest/crontab
+	git add .
+	git commit -m 'cronfile' 2> /dev/null > /dev/null
+	cd ..
+	_push env
+
+	_http_test crontest.ololo.tld / 'prepare string'
+}
