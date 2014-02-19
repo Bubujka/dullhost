@@ -183,7 +183,7 @@ function _generate_php_pool_conf {
 		EOF
 	if [ -f /home/git/env-files/$REPOSITORY/php-pool.conf ]; then
 		echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
-		cat /home/git/env-files/$REPOSITORY/php-pool.conf | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+		cat /home/git/env-files/$REPOSITORY/php-pool.conf | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
 	fi
 	sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 
@@ -267,7 +267,7 @@ function _generate_nginx_conf {
 }
 
 function _configure_msmtp_as_mail_handler {
-	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/conf.d/msmtp.ini
+	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/conf.d/msmtp.ini > /dev/null
 }
 
 case "$1" in
