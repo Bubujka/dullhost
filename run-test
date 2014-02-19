@@ -13,3 +13,5 @@ _test_env_repository
 
 _test_crontab_file
 _test_crontab_file_with_env
+
+_test_msmtp_in_env

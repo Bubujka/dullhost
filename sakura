@@ -201,9 +201,18 @@ function _clone_or_update_env_repository {
 	fi
 }
 
+function _install_msmtprc_file {
+  if [ -f /home/git/env-files/$1/msmtprc ]; then
+    sudo cp /home/git/env-files/$1/msmtprc /home/$1/.msmtprc
+    sudo chmod 600 /home/$1/.msmtprc
+    sudo chown $1:$1 /home/$1/.msmtprc 
+  fi
+}
+
 function _update_prj_configs {
 	NAME="$1"
 	echo "+ Updating $NAME configs"
+	_install_msmtprc_file $NAME
 	_site_install_crontab_file $NAME
 	_generate_php_pool_conf $NAME
 	_generate_nginx_conf $NAME

@@ -208,3 +208,26 @@ function _test_crontab_file_with_env {
 
 	_http_test crontest.ololo.tld / 'prepare string'
 }
+
+function _test_msmtp_in_env {
+  _create_rep msmtptest
+  cd msmtptest
+  echo 'index index.php;' > nginx.conf
+  echo 'include php_fastcgi;' >> nginx.conf
+  echo '<?php echo `cat ~/.msmtprc`; ?>' > index.php
+	echo '# initial string' > crontab
+  git add .
+  git commit -m 'testfiles' 2> /dev/null > /dev/null
+  cd ..
+	_push msmtptest
+
+	cd env
+	mkdir msmtptest 
+	echo "something" > msmtptest/msmtprc
+	git add .
+	git commit -m 'msmtprc' 2> /dev/null > /dev/null
+	cd ..
+	_push env
+
+	_http_test msmtptest.ololo.tld / 'something'
+}
