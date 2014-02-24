@@ -179,7 +179,7 @@ function _generate_php_pool_conf {
 		;chroot =
 		chdir = /
 		catch_workers_output = yes
-		php_value[session.save_path]=/home/\$pool/sessions
+		php_value[session.save_path]=/home/\$pool/session
 		EOF
 	if [ -f /home/git/env-files/$REPOSITORY/php-pool.conf ]; then
 		echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
