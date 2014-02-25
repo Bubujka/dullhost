@@ -13,9 +13,10 @@ sakura self-update
 -------
 Команды
 
-* cat ~/.ssh/id_rsa.pub | sakura upload-key MyName  
+* cat ~/.ssh/id_rsa.pub | sakura upload-key $MY_NAME
 * sakura self-update
 * sakura regenerate-configs
+* sakura delete $PRJ_NAME
 
 -------
 
