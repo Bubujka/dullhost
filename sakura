@@ -303,6 +303,11 @@ function _remove_user {
 	userdel -r "$NAME"
 }
 
+function _killall_user {
+	NAME="$1"
+	killall -KILL -w -u "$NAME"
+}
+
 case "$1" in
 	init)
 		_update_apt
@@ -365,6 +370,8 @@ case "$1" in
 		_remove_prj_nginx_config $NAME
 		_remove_prj_php_config $NAME
 		_reload_php_and_nginx
+
+		_killall_user $NAME
 
 		_remove_www_directory $NAME
 		_remove_git_repository $NAME
