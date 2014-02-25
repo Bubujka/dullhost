@@ -277,6 +277,31 @@ function _regenerate_all_configs {
 	done
 }
 
+function _remove_prj_nginx_config {
+	NAME="$1"
+	rm /etc/nginx/sites-enabled/$NAME
+}
+
+function _remove_prj_php_config {
+	NAME="$1"
+	rm /etc/php5/fpm/pool.d/${NAME}.conf
+}
+
+function _remove_www_directory {
+	NAME="$1"
+	rm -rf "/home/www/$NAME"
+}
+
+function _remove_git_repository {
+	NAME="$1"
+	rm -rf "/home/git/$NAME"
+}
+
+function _remove_user {
+	NAME="$1"
+	userdel -r "$NAME"
+}
+
 case "$1" in
 	init)
 		_update_apt
@@ -332,6 +357,18 @@ case "$1" in
 	self-update)
 		_download_fresh_sakura_script
 		_write_receiver
+		;;
+
+	delete)
+		NAME="$2"
+		echo "+ Removing $NAME"
+		_remove_prj_nginx_config $NAME
+		_remove_prj_php_config $NAME
+		_reload_php_and_nginx
+
+		_remove_www_directory $NAME
+		_remove_git_repository $NAME
+		_remove_user $NAME
 		;;
 
 	upload-key) # sudo sakura upload-key <username>
