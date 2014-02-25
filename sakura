@@ -122,7 +122,7 @@ function _write_php_fastcgi_aliases {
 }
 
 function _download_fresh_sakura_script {
-	wget -O - https://raw.github.com/Bubujka/sakura/master/sakura > /usr/local/bin/sakura; exit;
+	wget -O - https://raw.github.com/Bubujka/sakura/master/sakura > /usr/local/bin/sakura
 }
 
 function _start_nginx {
