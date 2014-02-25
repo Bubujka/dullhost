@@ -357,7 +357,6 @@ case "$1" in
 
 	self-update)
 		_download_fresh_sakura_script
-		_write_receiver
 		;;
 
 	delete)
