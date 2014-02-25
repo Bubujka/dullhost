@@ -270,6 +270,13 @@ function _configure_msmtp_as_mail_handler {
 	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/conf.d/msmtp.ini > /dev/null
 }
 
+function _regenerate_all_configs {
+	cd /home/www
+	for NAME in * ; do
+		_update_prj_configs $NAME
+	done
+}
+
 case "$1" in
 	init)
 		_update_apt
@@ -293,6 +300,7 @@ case "$1" in
 		_write_sudo_permissions
 		_write_receiver
 		;;
+
 	receiver)
 		NAME="$2"
 
@@ -316,8 +324,9 @@ case "$1" in
 		_reload_php_and_nginx
 		;;
 
-	write-receiver)
-		_write_receiver
+	regenerate-configs)
+		_regenerate_all_configs
+		_reload_php_and_nginx
 		;;
 
 	self-update)
