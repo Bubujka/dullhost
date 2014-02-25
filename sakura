@@ -159,34 +159,36 @@ function _write_receiver {
 
 function _generate_php_pool_conf {
 	REPOSITORY="$1"
-	sudo tee /etc/php5/fpm/pool.d/${REPOSITORY}.conf <<- EOF > /dev/null
-		[$REPOSITORY]
-		user = \$pool
-		group = \$pool
-		listen = /var/run/php5-fpm-\$pool.sock
-		pm = dynamic
-		pm.max_children = 5
-		pm.start_servers = 2
-		pm.min_spare_servers = 1
-		pm.max_spare_servers = 3
-		pm.max_requests = 500
-		;pm.status_path = /status
-		;ping.path = /ping
-		;access.log = log/\$pool.access.log
-		slowlog = /home/\$pool/log/php-slow.log
-		request_slowlog_timeout = 5
-		request_terminate_timeout = 10
-		;chroot =
-		chdir = /
-		catch_workers_output = yes
-		php_value[session.save_path]=/home/\$pool/session
-		EOF
-	if [ -f /home/git/env-files/$REPOSITORY/php-pool.conf ]; then
-		echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
-		cat /home/git/env-files/$REPOSITORY/php-pool.conf | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
-	fi
-	sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 
+	if [ -f /home/www/$REPOSITORY/CNAME ]; then
+		sudo tee /etc/php5/fpm/pool.d/${REPOSITORY}.conf <<- EOF > /dev/null
+			[$REPOSITORY]
+			user = \$pool
+			group = \$pool
+			listen = /var/run/php5-fpm-\$pool.sock
+			pm = dynamic
+			pm.max_children = 5
+			pm.start_servers = 2
+			pm.min_spare_servers = 1
+			pm.max_spare_servers = 3
+			pm.max_requests = 500
+			;pm.status_path = /status
+			;ping.path = /ping
+			;access.log = log/\$pool.access.log
+			slowlog = /home/\$pool/log/php-slow.log
+			request_slowlog_timeout = 5
+			request_terminate_timeout = 10
+			;chroot =
+			chdir = /
+			catch_workers_output = yes
+			php_value[session.save_path]=/home/\$pool/session
+			EOF
+		if [ -f /home/git/env-files/$REPOSITORY/php-pool.conf ]; then
+			echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+			cat /home/git/env-files/$REPOSITORY/php-pool.conf | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+		fi
+		sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
+	fi
 }
 
 function _clone_or_update_env_repository {
@@ -232,12 +234,11 @@ function _reload_php_and_nginx {
 
 function _generate_nginx_conf {
 	REPOSITORY="$1"
-	NGINX_CONF="location / { return 444; }"
-	if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
-		NGINX_CONF="include /home/www/$REPOSITORY/nginx.conf;"
-	fi
-
 	if [ -f /home/www/$REPOSITORY/CNAME ]; then
+		NGINX_CONF="location / { return 444; }"
+		if [ -f /home/www/$REPOSITORY/nginx.conf ]; then
+			NGINX_CONF="include /home/www/$REPOSITORY/nginx.conf;"
+		fi
 		DOMAINS=`cat /home/www/$REPOSITORY/CNAME`
 		ROOT_DIR="/home/www/$REPOSITORY"
 		if [ -d /home/www/$REPOSITORY/www ]; then
