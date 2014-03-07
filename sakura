@@ -398,9 +398,7 @@ case "$1" in
 		;;
 
 	self-update)
-		_download_fresh_sakura_script
-		_regenerate_all_configs
-		_reload_php_and_nginx
+		_download_fresh_sakura_script; /usr/local/bin/sakura regenerate-configs ; exit
 		;;
 
 	delete)
