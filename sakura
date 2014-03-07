@@ -218,10 +218,25 @@ function _install_env_file {
     sudo chown $1:$1 /home/$1/.env
   fi
 }
+
+function _install_authorized_keys {
+  if [ -f /home/git/env-files/$1/authorized_keys ]; then
+		sudo mkdir /home/$1/.ssh 2> /dev/null
+
+    sudo cp /home/git/env-files/$1/authorized_keys /home/$1/.ssh/authorized_keys
+
+    sudo chmod 700 /home/$1/.ssh
+    sudo chmod 600 /home/$1/.ssh/authorized_keys
+
+    sudo chown -R $1:$1 /home/$1/.ssh
+  fi
+}
+
 function _update_prj_configs {
 	NAME="$1"
 	echo "+ Updating $NAME configs"
 	_install_env_file $NAME
+	_install_authorized_keys $NAME
 	_install_msmtprc_file $NAME
 	_site_install_crontab_file $NAME
 	_generate_php_pool_conf $NAME
