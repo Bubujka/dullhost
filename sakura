@@ -207,13 +207,21 @@ function _install_msmtprc_file {
   if [ -f /home/git/env-files/$1/msmtprc ]; then
     sudo cp /home/git/env-files/$1/msmtprc /home/$1/.msmtprc
     sudo chmod 600 /home/$1/.msmtprc
-    sudo chown $1:$1 /home/$1/.msmtprc 
+    sudo chown $1:$1 /home/$1/.msmtprc
   fi
 }
 
+function _install_env_file {
+  if [ -f /home/git/env-files/$1/env ]; then
+    sudo cp /home/git/env-files/$1/env /home/$1/.env
+    sudo chmod 600 /home/$1/.env
+    sudo chown $1:$1 /home/$1/.env
+  fi
+}
 function _update_prj_configs {
 	NAME="$1"
 	echo "+ Updating $NAME configs"
+	_install_env_file $NAME
 	_install_msmtprc_file $NAME
 	_site_install_crontab_file $NAME
 	_generate_php_pool_conf $NAME
@@ -308,6 +316,14 @@ function _killall_user {
 	killall -KILL -w -u "$NAME"
 }
 
+function _write_user_env_loader_to_profiled {
+	cat > /etc/profile.d/sakura.sh <<- EOF
+		if [ -f ~/.env ] ; then
+			. ~/.env
+		fi
+		EOF
+}
+
 case "$1" in
 	init)
 		_update_apt
@@ -323,6 +339,8 @@ case "$1" in
 		_install_php_modules
 		_configure_msmtp_as_mail_handler
 		_install_composer
+
+		_write_user_env_loader_to_profiled
 
 		_create_git_user
 		
