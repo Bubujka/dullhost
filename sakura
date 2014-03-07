@@ -72,9 +72,9 @@ function _reload_nginx {
 
 function _site_install_crontab_file {
 	if [ -f /home/www/$1/crontab ]; then
-		if [ -f /home/git/env-files/$1/crontab ]; then
+		if [ -f /home/git/env-files/$1/env ]; then
 			TMP_FILE=`mktemp`
-			cat /home/git/env-files/$1/crontab > $TMP_FILE
+			cat /home/git/env-files/$1/env > $TMP_FILE
 			echo >> $TMP_FILE
 			cat /home/www/$1/crontab >> $TMP_FILE
 			sudo crontab -u $1  $TMP_FILE
@@ -183,9 +183,11 @@ function _generate_php_pool_conf {
 			catch_workers_output = yes
 			php_value[session.save_path]=/home/\$pool/session
 			EOF
-		if [ -f /home/git/env-files/$REPOSITORY/php-pool.conf ]; then
+		if [ -f /home/git/env-files/$REPOSITORY/env ]; then
 			echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
-			cat /home/git/env-files/$REPOSITORY/php-pool.conf | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+			cat /home/git/env-files/$REPOSITORY/env |
+				sed 's/\([^=]*\)=\(.*\)/env[\1]=\2/' |
+				sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
 		fi
 		sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 	fi
@@ -213,7 +215,9 @@ function _install_msmtprc_file {
 
 function _install_env_file {
   if [ -f /home/git/env-files/$1/env ]; then
-    sudo cp /home/git/env-files/$1/env /home/$1/.env
+    sudo cat /home/git/env-files/$1/env |
+			sed 's/\([^=]*\)=\(.*\)/export \1=\2/' |
+			sudo tee /home/$1/.env > /dev/null
     sudo chmod 600 /home/$1/.env
     sudo chown $1:$1 /home/$1/.env
   fi

@@ -47,7 +47,7 @@ function _create_env {
   cd env
   git init > /dev/null
 	mkdir prjenvtester
-  touch prjenvtester/php-pool.conf
+  touch prjenvtester/env
   git add .
   git commit -m 'initial commit' 2> /dev/null > /dev/null
   git remote add origin git@192.168.56.67:env
@@ -132,7 +132,7 @@ function _test_something_in_env {
 }
 function _write_something_to_env {
   cd env
-  echo "env[my_env]='hello'" > prjenvtester/php-pool.conf
+  echo "my_env='hello'" > prjenvtester/env
   git add .
   git commit -m 'env' 2> /dev/null > /dev/null
   git push 2> /dev/null > /dev/null
@@ -197,14 +197,14 @@ function _test_crontab_file {
 
 function _test_crontab_file_with_env {
 	cd env
-	mkdir crontest 
-	echo "# prepare string" > crontest/crontab
+	mkdir crontest
+	echo "hello='world'" > crontest/env
 	git add .
 	git commit -m 'cronfile' 2> /dev/null > /dev/null
 	cd ..
 	_push env
 
-	_http_test crontest.ololo.tld / 'prepare string'
+	_http_test crontest.ololo.tld / "hello='world'"
 }
 
 function _test_msmtp_in_env {
@@ -213,14 +213,13 @@ function _test_msmtp_in_env {
   echo 'index index.php;' > nginx.conf
   echo 'include php_fastcgi;' >> nginx.conf
   echo '<?php echo `cat ~/.msmtprc`; ?>' > index.php
-	echo '# initial string' > crontab
   git add .
   git commit -m 'testfiles' 2> /dev/null > /dev/null
   cd ..
 	_push msmtptest
 
 	cd env
-	mkdir msmtptest 
+	mkdir msmtptest
 	echo "something" > msmtptest/msmtprc
 	git add .
 	git commit -m 'msmtprc' 2> /dev/null > /dev/null
