@@ -33,12 +33,39 @@ sakura self-update
 - если у проекта будет папка www, то nginx установит $document_root на неё
 - если у проекта есть файл 'crontab' то он установлен для пользователя проекта
 
+
+-------
+
+Репозиторий env
+
+В нём могут быть следующие файлы
+- env - настройки что будут переданы php, crontab, консоли
+  Пример:
+  env='production'
+  MYSQL_CONNECTION='mysql://root:qwerty@localhost/database'
+
+- msmtprc - настройки для почты (чтобы работала функция mail())
+  Пример:
+  account default
+  host smtp.yandex.ru
+  port 587
+  protocol smtp
+  auth on
+  from admin@bubujka.org
+  user admin@bubujka.org
+  password OlolOloll1
+  tls on
+  tls_starttls on
+  tls_certcheck off
+  logfile /home/myusername/msmtp.log
+
+- authorized_keys - ключи людей, что будут выполнять консольные команды 
+
 -------
 
 Специальные репозитории
 - env - содержит настройки окружения что будут переданы php
 - default_server - проект, который будет отображаться по умолчанию
-
 
 -------
 

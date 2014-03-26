@@ -238,13 +238,17 @@ function _install_authorized_keys {
 
 function _update_prj_configs {
 	NAME="$1"
-	echo "+ Updating $NAME configs"
-	_install_env_file $NAME
-	_install_authorized_keys $NAME
-	_install_msmtprc_file $NAME
-	_site_install_crontab_file $NAME
-	_generate_php_pool_conf $NAME
-	_generate_nginx_conf $NAME
+  if [ -d "/home/$NAME" ]; then
+    echo "+ Updating $NAME configs"
+    _install_env_file $NAME
+    _install_authorized_keys $NAME
+    _install_msmtprc_file $NAME
+    _site_install_crontab_file $NAME
+    _generate_php_pool_conf $NAME
+    _generate_nginx_conf $NAME
+  else
+    echo "+ Project $NAME not installed - nothing to update +_+"
+  fi
 }
 
 function _update_all_env_configs {
