@@ -302,7 +302,13 @@ function _generate_nginx_conf {
 }
 
 function _configure_msmtp_as_mail_handler {
-	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/conf.d/msmtp.ini > /dev/null
+	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/fpm/conf.d/msmtp.ini > /dev/null
+	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/cli/conf.d/msmtp.ini > /dev/null
+}
+
+function _configure_php {
+	echo 'short_open_tag = On' | sudo tee /etc/php5/fpm/conf.d/shortopentagson.ini > /dev/null
+	echo 'short_open_tag = On' | sudo tee /etc/php5/cli/conf.d/shortopentagson.ini > /dev/null
 }
 
 function _regenerate_all_configs {
@@ -364,6 +370,7 @@ case "$1" in
 		_install_php
 		_install_php_modules
 		_configure_msmtp_as_mail_handler
+		_configure_php
 		_install_composer
 
 		_write_user_env_loader_to_profiled
