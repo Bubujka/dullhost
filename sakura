@@ -475,4 +475,3 @@ case "$1" in
 		echo "Usage: sakura <command> [options]"
 		;;
 esac
-# vim: noexpandtab ts=2 sw=2
