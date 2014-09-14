@@ -166,8 +166,8 @@ function _generate_php_pool_conf {
 			[$REPOSITORY]
 			user = \$pool
 			group = \$pool
-      listen.owner = $pool
-      listen.group = www-data
+			listen.owner = \$pool
+			listen.group = www-data
 			listen = /var/run/php5-fpm-\$pool.sock
 			pm = dynamic
 			pm.max_children = 5
