@@ -192,6 +192,11 @@ function _generate_php_pool_conf {
 				sed 's/\([^=]*\)=\(.*\)/env[\1]=\2/' |
 				sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
 		fi
+		if [ -f /home/git/env-files/$REPOSITORY/pool.conf ]; then
+			echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+			cat /home/git/env-files/$REPOSITORY/pool.conf |
+				sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+		fi
 		sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 	fi
 }
