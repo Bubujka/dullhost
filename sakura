@@ -58,7 +58,7 @@ function _site_pull {
 
 function _site_run_install_script {
 	if [ -f /home/www/$1/install ]; then
-		sudo -i -u $1 ./install
+		sudo -i -u $1 bash "cd /home/www/$1/; /home/www/$1/install "
 	fi
 }
 
