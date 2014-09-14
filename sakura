@@ -63,8 +63,7 @@ function _site_run_install_script {
 }
 
 function _reload_php {
-  sudo killall -w -KILL php5-fpm
-	sudo start php5-fpm
+	sudo restart php5-fpm
 }
 
 function _reload_nginx {
