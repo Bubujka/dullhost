@@ -213,10 +213,14 @@ function _test_msmtp_in_env {
   echo 'index index.php;' > nginx.conf
   echo 'include php_fastcgi;' >> nginx.conf
   echo '<?php echo `cat ~/.msmtprc`; ?>' > index.php
+	echo '<?php echo ini_get("sendmail_path"); ?>' > sendmail.php
   git add .
   git commit -m 'testfiles' 2> /dev/null > /dev/null
   cd ..
 	_push msmtptest
+
+	# Проверяю что дефолтный обработчик для почты
+	_http_test msmtptest.ololo.tld /sendmail.php '/usr/sbin/sendmail -t -i'
 
 	cd env
 	mkdir msmtptest
@@ -226,5 +230,9 @@ function _test_msmtp_in_env {
 	cd ..
 	_push env
 
+	# msmtp файл есть
 	_http_test msmtptest.ololo.tld / 'something'
+
+	# обработчик почты теперь msmtp
+	_http_test msmtptest.ololo.tld /sendmail.php '/usr/bin/msmtp -t'
 }

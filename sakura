@@ -196,6 +196,11 @@ function _generate_php_pool_conf {
 			cat /home/git/env-files/$REPOSITORY/pool.conf |
 				sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
 		fi
+		if [ -f /home/git/env-files/$REPOSITORY/msmtprc ]; then
+			echo | sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+			echo "php_value[sendmail_path]=/usr/bin/msmtp -t" |
+				sudo tee -a /etc/php5/fpm/pool.d/${REPOSITORY}.conf > /dev/null
+		fi
 		sudo chmod 600 /etc/php5/fpm/pool.d/${REPOSITORY}.conf
 	fi
 }
@@ -305,10 +310,6 @@ function _generate_nginx_conf {
 	fi
 }
 
-function _configure_msmtp_as_mail_handler {
-	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/fpm/conf.d/msmtp.ini > /dev/null
-	echo 'sendmail_path = "/usr/bin/msmtp -t"' | sudo tee /etc/php5/cli/conf.d/msmtp.ini > /dev/null
-}
 
 function _configure_php {
 	echo 'short_open_tag = On' | sudo tee /etc/php5/fpm/conf.d/shortopentagson.ini > /dev/null
@@ -360,6 +361,13 @@ function _write_user_env_loader_to_profiled {
 		EOF
 }
 
+function _install_postfix {
+	_update_apt
+	debconf-set-selections <<< "postfix postfix/mailname string $1"
+	debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
+	apt-get install -y postfix
+}
+
 case "$1" in
 	init)
 		_update_apt
@@ -373,7 +381,6 @@ case "$1" in
 
 		_install_php
 		_install_php_modules
-		_configure_msmtp_as_mail_handler
 		_configure_php
 		_install_composer
 
@@ -408,6 +415,10 @@ case "$1" in
 
 		echo "+ Reloading php and nginx"
 		_reload_php_and_nginx
+		;;
+
+	install-postfix)
+		_install_postfix "$2"
 		;;
 
 	regenerate-configs)

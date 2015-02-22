@@ -80,3 +80,12 @@ sakura self-update
 
 # Где тестировалось
 - ubuntu 14.04 x64 - должна работать
+
+# Установка postfix
+
+Под суперпользователем:
+
+```sh
+sakura install-postfix DOMAIN.RU
+```
+
