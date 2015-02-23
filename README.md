@@ -97,3 +97,23 @@ sakura install-postfix DOMAIN.RU
 sakura install-notifier MY@EMAIL.COM
 sakura install-notifier MY@EMAIL2.COM
 ```
+
+
+# Настройка бэкапа
+
+Можно настроить автоматическую заливку файлов на s3 у проектов.
+
+Сперва стоит создать bucket и завести пользователя под него на s3
+
+С сервера из-под суперпользователя выполняем команду
+
+```sh
+sakura configure-backups "ACCESS_KEY" "SECRET_KEY" "BUCKET"
+```
+
+И у нужных проектов добавляем файл **BACKUP** к примеру следующего содержания:
+
+```txt
+uploads
+application/logs
+```
