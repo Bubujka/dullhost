@@ -11,7 +11,7 @@ function _update_apt {
 }
 
 function _install_helper_software {
-	apt-get install -y git curl msmtp mailutils
+	apt-get install -y git curl msmtp
 }
 
 function _install_nginx {
@@ -366,7 +366,7 @@ function _install_postfix {
 	_update_apt
 	debconf-set-selections <<< "postfix postfix/mailname string $1"
 	debconf-set-selections <<< "postfix postfix/main_mailer_type string 'Internet Site'"
-	apt-get install -y postfix
+	apt-get install -y postfix mailutils
 }
 
 function _enable_unattended_upgrades {
