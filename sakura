@@ -11,7 +11,7 @@ function _update_apt {
 }
 
 function _install_helper_software {
-	apt-get install -y git curl msmtp
+	apt-get install -y git curl msmtp mailutils
 }
 
 function _install_nginx {
@@ -51,6 +51,7 @@ function _site_clone_repository {
 	sudo git clone ~git/$1 $1
 	sudo chown -R $1:$1 $1
 }
+
 function _site_pull {
 	cd /home/www/$1
 	sudo -u $1 git pull
@@ -218,49 +219,49 @@ function _clone_or_update_env_repository {
 }
 
 function _install_msmtprc_file {
-  if [ -f /home/git/env-files/$1/msmtprc ]; then
-    sudo cp /home/git/env-files/$1/msmtprc /home/$1/.msmtprc
-    sudo chmod 600 /home/$1/.msmtprc
-    sudo chown $1:$1 /home/$1/.msmtprc
-  fi
+	if [ -f /home/git/env-files/$1/msmtprc ]; then
+	  sudo cp /home/git/env-files/$1/msmtprc /home/$1/.msmtprc
+	  sudo chmod 600 /home/$1/.msmtprc
+	  sudo chown $1:$1 /home/$1/.msmtprc
+	fi
 }
 
 function _install_env_file {
-  if [ -f /home/git/env-files/$1/env ]; then
-    sudo cat /home/git/env-files/$1/env |
-			sed 's/\([^=]*\)=\(.*\)/export \1=\2/' |
+	if [ -f /home/git/env-files/$1/env ]; then
+	  sudo cat /home/git/env-files/$1/env |
+		sed 's/\([^=]*\)=\(.*\)/export \1=\2/' |
 			sudo tee /home/$1/.env > /dev/null
-    sudo chmod 600 /home/$1/.env
-    sudo chown $1:$1 /home/$1/.env
-  fi
+	  sudo chmod 600 /home/$1/.env
+	  sudo chown $1:$1 /home/$1/.env
+	fi
 }
 
 function _install_authorized_keys {
-  if [ -f /home/git/env-files/$1/authorized_keys ]; then
+	if [ -f /home/git/env-files/$1/authorized_keys ]; then
 		sudo mkdir /home/$1/.ssh 2> /dev/null
 
-    sudo cp /home/git/env-files/$1/authorized_keys /home/$1/.ssh/authorized_keys
+	  sudo cp /home/git/env-files/$1/authorized_keys /home/$1/.ssh/authorized_keys
 
-    sudo chmod 700 /home/$1/.ssh
-    sudo chmod 600 /home/$1/.ssh/authorized_keys
+	  sudo chmod 700 /home/$1/.ssh
+	  sudo chmod 600 /home/$1/.ssh/authorized_keys
 
-    sudo chown -R $1:$1 /home/$1/.ssh
-  fi
+	  sudo chown -R $1:$1 /home/$1/.ssh
+	fi
 }
 
 function _update_prj_configs {
 	NAME="$1"
-  if [ -d "/home/$NAME" ]; then
-    echo "+ Updating $NAME configs"
-    _install_env_file $NAME
-    _install_authorized_keys $NAME
-    _install_msmtprc_file $NAME
-    _site_install_crontab_file $NAME
-    _generate_php_pool_conf $NAME
-    _generate_nginx_conf $NAME
-  else
-    echo "+ Project $NAME not installed - nothing to update +_+"
-  fi
+	if [ -d "/home/$NAME" ]; then
+	  echo "+ Updating $NAME configs"
+	  _install_env_file $NAME
+	  _install_authorized_keys $NAME
+	  _install_msmtprc_file $NAME
+	  _site_install_crontab_file $NAME
+	  _generate_php_pool_conf $NAME
+	  _generate_nginx_conf $NAME
+	else
+	  echo "+ Project $NAME not installed - nothing to update +_+"
+	fi
 }
 
 function _update_all_env_configs {
@@ -368,10 +369,51 @@ function _install_postfix {
 	apt-get install -y postfix
 }
 
+function _enable_unattended_upgrades {
+	apt-get install -y unattended-upgrades
+	echo 'APT::Periodic::Update-Package-Lists "1";' > /etc/apt/apt.conf.d/20auto-upgrades
+	echo 'APT::Periodic::Unattended-Upgrade "1";' >> /etc/apt/apt.conf.d/20auto-upgrades
+}
+
+function _notify_about_dirty_git {
+	TEMP=$(mktemp)
+	for dir in `find /home/www/ -type d -name '.git'`
+	do
+		cd $dir;
+		cd ..
+		if [ $(git status --porcelain | wc -l ) != 0 ] ;
+		then
+			echo $dir >> $TEMP
+			echo  >> $TEMP
+			echo "git status:" >> $TEMP
+			git status --porcelain >> $TEMP
+			echo '---------------------------------' >> $TEMP
+			echo  >> $TEMP
+			echo  >> $TEMP
+		fi
+	done
+
+	if [ $(cat $TEMP | wc -l) != 0 ];
+	then
+		cat $TEMP | mail \
+			-a "From: $MSMTP_FROM" \
+			-s "У '$(hostname)' есть незакомиченные репы" \
+			$1
+	fi
+
+	rm $TEMP
+}
+
+function _install_notifier (){
+	line="0 * * * * /usr/local/bin/dokuro notify-about-dirty-git $1"
+	(crontab -u root -l; echo "$line" ) | crontab -u root -
+}
+
 case "$1" in
 	init)
 		_update_apt
 
+		_enable_unattended_upgrades
 		_install_helper_software
 
 		_install_nginx
@@ -392,6 +434,15 @@ case "$1" in
 
 		_write_sudo_permissions
 		_write_receiver
+		;;
+
+
+	install-notifier)
+		_install_notifier $2
+		;;
+
+	notify-about-dirty-git)
+		_notify_about_dirty_git $2
 		;;
 
 	receiver)

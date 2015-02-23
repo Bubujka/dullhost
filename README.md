@@ -89,3 +89,11 @@ sakura self-update
 sakura install-postfix DOMAIN.RU
 ```
 
+# Настройка оповещений о грязных репозиториях
+
+Сначала нужно установить postfix:
+
+```sh
+sakura install-notifier MY@EMAIL.COM
+sakura install-notifier MY@EMAIL2.COM
+```
