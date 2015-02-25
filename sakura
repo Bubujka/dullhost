@@ -494,8 +494,14 @@ function _backup_to_s3 {
 	done
 }
 
+function _setup_moscow_timezone {
+	echo "Europe/Moscow" > /etc/timezone
+	dpkg-reconfigure -f noninteractive tzdata
+}
+
 case "$1" in
 	init)
+		_setup_moscow_timezone
 		_update_apt
 
 		_enable_unattended_upgrades
