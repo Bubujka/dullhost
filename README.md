@@ -117,3 +117,9 @@ sakura configure-backups "ACCESS_KEY" "SECRET_KEY" "BUCKET"
 uploads
 application/logs
 ```
+
+# Установка mysql
+
+```sh
+sakura install-mysql RooOtPassWord
+```

@@ -499,6 +499,23 @@ function _setup_moscow_timezone {
 	dpkg-reconfigure -f noninteractive tzdata
 }
 
+function _install_mysql {
+	debconf-set-selections <<< "mysql-server-5.5 mysql-server/root_password password $1"
+	debconf-set-selections <<< "mysql-server-5.5 mysql-server/root_password_again password $1"
+
+	apt-get -y install mysql-server mysql-client
+
+	cat > ~/.my.cnf <<- EOF
+		[client]
+		host            = localhost
+		user            = root
+		password            = $1
+		port            = 3306
+		default_character_set = utf8
+		EOF
+}
+
+
 case "$1" in
 	init)
 		_setup_moscow_timezone
@@ -527,6 +544,10 @@ case "$1" in
 		_write_receiver
 		;;
 
+
+	install-mysql)
+		_install_mysql $2
+		;;
 
 	install-notifier)
 		_install_notifier $2
